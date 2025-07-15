@@ -1,0 +1,134 @@
+//! 实体移动系统实现
+
+use bevy::prelude::*;
+use super::super::{
+    components::{Position, EnergyStore, MoveTo},
+    hex_grid::{HexGridConfig, hex_distance, is_valid_position},
+};
+
+use crate::core::state::GameState;
+
+#[derive(Debug, Hash, PartialEq, Eq, Clone, SystemSet)]
+pub enum MovementSystemSet {
+    Input,
+    Pathfinding,
+    Movement,
+}
+
+pub fn configure_movement_sets(app: &mut App) {
+    app.configure_sets(
+        Update,
+        (
+            MovementSystemSet::Input,
+            MovementSystemSet::Pathfinding,
+            MovementSystemSet::Movement,
+        )
+            .chain()
+            .run_if(in_state(GameState::Playing)),
+    );
+}
+
+pub fn register_movement_systems(app: &mut App) {
+    app.add_systems(Update, (
+        keyboard_input_system.in_set(MovementSystemSet::Input),
+        pathfinding_system.in_set(MovementSystemSet::Pathfinding),
+        update_paths.in_set(MovementSystemSet::Movement),
+        movement_system.in_set(MovementSystemSet::Movement),
+    ));
+}
+
+/// 键盘输入系统
+pub fn keyboard_input_system(
+    keyboard: Res<ButtonInput<KeyCode>>,
+    mut query: Query<(&Position, &mut MoveTo)>,
+    config: Res<HexGridConfig>,
+) {
+    if query.is_empty() {
+        return;
+    }
+
+    let Ok((current_pos, mut move_to)) = query.single_mut() else {
+        return;
+    };
+    let mut new_target = *current_pos;
+
+    if keyboard.pressed(KeyCode::ArrowUp) {
+        new_target.y += 1;
+    }
+    if keyboard.pressed(KeyCode::ArrowDown) {
+        new_target.y -= 1;
+    }
+    if keyboard.pressed(KeyCode::ArrowLeft) {
+        new_target.x -= 1;
+    }
+    if keyboard.pressed(KeyCode::ArrowRight) {
+        new_target.x += 1;
+    }
+
+    if is_valid_position(new_target, &config) && new_target != *current_pos {
+        move_to.target = new_target;
+        move_to.path.clear();
+    }
+}
+
+/// 寻路系统
+pub fn pathfinding_system(
+    mut query: Query<(&Position, &mut MoveTo)>,
+    _config: Res<HexGridConfig>,
+) {
+    for (current_pos, mut move_to) in &mut query {
+        if move_to.path.is_empty() || hex_distance(*current_pos, move_to.target) > 1 {
+            // 简单直线移动作为临时实现
+            // TODO: 实现完整A*寻路算法
+            move_to.path = vec![move_to.target];
+        }
+    }
+}
+
+/// 路径更新系统
+pub fn update_paths(
+    query: Query<(&Position, &MoveTo), Changed<Position>>,
+) {
+    for (_position, _move_to) in query.iter() {
+        // 路径更新逻辑
+        // 当位置变化时更新路径
+    }
+}
+
+/// 移动执行系统
+#[allow(unused_variables)]
+pub fn movement_system(
+    mut commands: Commands,
+    mut query: Query<(Entity, &mut Position, &mut MoveTo, Option<&mut EnergyStore>)>,
+    time: Res<Time>,
+    config: Res<HexGridConfig>,
+) {
+    for (entity, mut position, mut move_to, mut energy) in &mut query {
+        if let Some(next_pos) = move_to.path.first() {
+            // 检查能量是否足够（如果有能量组件）
+            if let Some(ref mut energy) = energy {
+                if energy.value <= 0.0 {
+                    commands.entity(entity).remove::<MoveTo>();
+                    continue;
+                }
+                
+                // 消耗能量
+                energy.value -= (0.5 * energy.max) * time.delta_secs();
+            }
+
+            // 检查位置有效性
+            if !is_valid_position(*next_pos, &config) {
+                commands.entity(entity).remove::<MoveTo>();
+                continue;
+            }
+
+            // 更新位置
+            *position = *next_pos;
+
+            // 如果到达目标点，清除路径
+            if *position == move_to.target {
+                move_to.path.clear();
+            }
+        }
+    }
+}
