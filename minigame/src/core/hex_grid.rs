@@ -106,7 +106,7 @@ mod tests {
 
     #[test]
     fn test_spatial_partition() {
-        let config = HexGridConfig { size: 1.0, width: 10, height: 10 };
+        let config = HexGridConfig { size: 1.0, width: 10, height: 10, move_speed: 1.0 };
         let mut partition = SpatialPartition::new(config);
         let entity = Entity::from_raw(0);
         
