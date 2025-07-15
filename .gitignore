@@ -1,0 +1,14 @@
+# 编译输出
+target/
+Cargo.lock
+.cargo/
+
+# 编辑器文件
+.vscode/
+.idea/
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+*.ttc
