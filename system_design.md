@@ -232,6 +232,68 @@ pub fn error_handler_system(
 
 ## 3. ECS 组件设计
 
+### 3.0 食物链能量传递规则
+```rust
+// 完整实现
+pub fn energy_transfer_system(
+    mut commands: Commands,
+    predators: Query<(&Position, &mut Hunger, &Predator, Entity)>,
+    preys: Query<(&Position, &EnergyStore, Entity)>,
+    config: Res<FoodChainConfig>
+) {
+    // 空间分区加速查询
+    let spatial_map = build_spatial_map(&preys);
+    
+    for (pred_pos, mut hunger, predator, pred_entity) in &predators {
+        if hunger.current > predator.hunger_threshold {
+            continue;
+        }
+
+        // 查找范围内的猎物
+        let nearby_preys = spatial_map.query(pred_pos, predator.attack_range);
+        
+        for prey_entity in nearby_preys {
+            if let Ok((prey_pos, energy_store, prey_entity)) = preys.get(prey_entity) {
+                // 计算距离
+                let dist = hex_distance(*pred_pos, *prey_pos);
+                if dist > predator.attack_range {
+                    continue;
+                }
+
+                // 计算能量转移
+                let efficiency = config.get_efficiency(predator.species, energy_store.species);
+                let energy_gain = energy_store.value * efficiency;
+                
+                // 更新状态
+                hunger.current -= energy_gain;
+                commands.entity(prey_entity).despawn();
+                
+                break; // 每次只捕食一个猎物
+            }
+        }
+    }
+}
+
+// 配置数据结构
+#[derive(Resource)]
+pub struct FoodChainConfig {
+    pub efficiencies: HashMap<(Species, Species), f32>,
+    pub base_attack_ranges: HashMap<Species, f32>
+}
+
+impl FoodChainConfig {
+    pub fn get_efficiency(&self, predator: Species, prey: Species) -> f32 {
+        *self.efficiencies.get(&(predator, prey)).unwrap_or(&0.0)
+    }
+}
+
+// 能量转换效率表
+| 捕食关系 | 效率 | 攻击范围 |
+|----------|------|---------|
+| Fox→Rabbit | 0.7 | 1.5 |
+| Rabbit→Plant | 0.5 | 1.0 |
+```
+
 ### 基础组件
 ```rust
 #[derive(Component)]
@@ -260,6 +322,65 @@ pub struct Fox;
 ## 3. 核心系统设计
 
 ### 3.1 移动系统
+
+## 4. 关卡系统
+
+### 4.1 关卡加载流程
+```mermaid
+sequenceDiagram
+    participant Main
+    participant AssetServer
+    participant World
+    
+    Main->>AssetServer: 加载场景配置(JSON)
+    AssetServer-->>Main: 返回配置数据
+    Main->>World: 初始化地形(HexGrid)
+    loop 实体生成
+        Main->>World: 创建实体(Entity)
+        Main->>World: 添加组件(Position, Render)
+    end
+    Main->>World: 设置初始状态
+```
+
+### 4.2 性能指标
+| 指标 | 目标值 | 测量方法 |
+|------|--------|----------|
+| 加载时间 | <500ms | 从开始加载到第一帧渲染 |
+| 内存占用 | <50MB | 场景加载后的内存增量 |
+| 实体数量 | <1000 | 同时活跃的实体计数 |
+| 帧率 | 60FPS | 游戏运行时的平均帧率 |
+
+### 4.3 测试用例
+```rust
+#[test]
+fn test_level_loading() {
+    let mut app = TestApp::new();
+    app.load_level("forest");
+    assert!(app.entity_count() > 0);
+    assert!(app.frame_time() < 16.67); // 60FPS
+}
+
+#[test]
+fn test_entity_generation() {
+    let mut app = TestApp::new();
+    app.load_level("meadow");
+    
+    // 验证实体生成数量
+    let rabbits = app.query::<&Rabbit>().iter().count();
+    assert!(rabbits >= 3 && rabbits <= 10);
+    
+    // 验证组件完整性
+    for (pos, render) in app.query::<(&Position, &Render)>().iter() {
+        assert!(pos.x >= 0 && pos.x < MAP_WIDTH);
+        assert!(pos.y >= 0 && pos.y < MAP_HEIGHT);
+        assert!(!render.mesh.is_empty());
+    }
+    
+    // 验证食物链关系
+    let plants = app.query::<&Plant>().iter().count();
+    assert!(plants > rabbits * 2); // 确保足够的植物
+}
+```
 ```rust
 pub fn movement_system(
     mut query: Query<(&mut Position, &MoveTarget, &MoveSpeed)>,
