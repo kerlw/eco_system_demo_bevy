@@ -27,7 +27,7 @@ impl HexGridConfig {
 pub fn grid_to_world(pos: Position, config: &HexGridConfig) -> Vec3 {
     let x = config.size * 1.5 * pos.x as f32;
     let z = config.size * f32::sqrt(3.0) * (pos.y as f32 + 0.5 * (pos.x as f32 % 2.0));
-    Vec3::new(x, 0.0, z)
+    Vec3::new(x, z, 0.0)
 }
 
 /// 计算两个六边形之间的距离

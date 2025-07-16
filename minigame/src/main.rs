@@ -23,7 +23,7 @@ fn close_window_on_esc(
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .insert_resource(HexGridConfig::new(1.0, 10, 10, 5.0))
+        .insert_resource(HexGridConfig::new(50.0, 10, 10, 5.0))
         .add_systems(Startup, (
             minigame::core::systems::scene::setup_scene,
             minigame::core::systems::grid::setup_grid

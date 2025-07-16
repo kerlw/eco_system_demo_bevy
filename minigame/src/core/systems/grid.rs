@@ -1,32 +1,54 @@
 //! 网格系统实现
 
+use std::f32::consts::PI;
+
 use super::super::components::Position;
 use super::super::hex_grid::{HexGridConfig, SpatialPartition, grid_to_world};
+use crate::core::systems::hex_grid::{HexCell, create_hex_mesh};
 use bevy::prelude::*;
 
-/// 初始化网格
-pub fn setup_grid(mut commands: Commands, config: Res<HexGridConfig>) {
+#[derive(Resource)]
+pub struct SharedHexMesh(Handle<Mesh>);
+
+/// 初始化网格和共享资源
+pub fn setup_grid(
+    mut commands: Commands,
+    config: Res<HexGridConfig>,
+    mut meshes: ResMut<Assets<Mesh>>,
+) {
+    let size = config.size;
     commands.spawn((
         Name::new("HexGrid"),
         SpatialPartition::new(config.into_inner().clone()),
     ));
+
+    commands.insert_resource(SharedHexMesh(create_hex_mesh(meshes, size)));
 }
 
 /// 渲染网格系统
-pub fn render_grid_system(config: Res<HexGridConfig>, mut gizmos: Gizmos) {
+pub fn render_grid_system(
+    mut commands: Commands,
+    config: Res<HexGridConfig>,
+    shared_mesh: Res<SharedHexMesh>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+) {
+    let material = materials.add(Color::Srgba(Srgba::GREEN));
+
     for x in 0..config.width as i32 {
         for y in 0..config.height as i32 {
             let pos = Position { x, y };
             let center = grid_to_world(pos, &config);
 
-            // 绘制六边形边框（使用更显眼的颜色）
-            gizmos.linestrip(
-                (0..=6).map(|i| {
-                    let angle = std::f32::consts::TAU * i as f32 / 6.0;
-                    center + Vec3::new(config.size * angle.cos(), 0.0, config.size * angle.sin())
-                }),
-                Color::srgb(0.0, 1.0, 0.0), // 使用亮绿色
-            );
+            commands.spawn((
+                Mesh2d(shared_mesh.0.clone()),
+                Transform::from_translation(center),
+                MeshMaterial2d(material.clone()),
+                HexCell {
+                    hex: (x, y).into(),
+                    mesh: shared_mesh.0.clone(),
+                    material: material.clone(),
+                },
+            ));
         }
     }
 }

@@ -2,6 +2,7 @@
 
 pub mod debug;
 pub mod grid;
+pub mod hex_grid;
 pub mod movement;
 pub mod scene;
 pub mod state_machine;
