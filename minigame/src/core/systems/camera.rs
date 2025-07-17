@@ -1,5 +1,5 @@
+use bevy::input::{ButtonInput, keyboard::KeyCode};
 use bevy::prelude::*;
-use bevy::input::{keyboard::KeyCode, ButtonInput};
 
 /// 镜头控制器组件
 #[derive(Component)]
@@ -25,20 +25,25 @@ pub fn camera_controller_system(
 ) {
     for (mut transform, controller) in query.iter_mut() {
         let mut direction = Vec3::ZERO;
-        
+
         // WASD移动控制
         if keyboard_input.pressed(KeyCode::KeyW) {
             direction.y += 1.0;
-        }
-        if keyboard_input.pressed(KeyCode::KeyS) {
+        } else if keyboard_input.pressed(KeyCode::KeyS) {
             direction.y -= 1.0;
         }
         if keyboard_input.pressed(KeyCode::KeyA) {
             direction.x -= 1.0;
-        }
-        if keyboard_input.pressed(KeyCode::KeyD) {
+        } else if keyboard_input.pressed(KeyCode::KeyD) {
             direction.x += 1.0;
         }
+
+        // 没有按键的时候可以返回了,如果下面的缩放要添加实现，这里需要修改。
+        if direction == Vec3::ZERO {
+            return;
+        }
+
+        // info!("direction: {:?}", direction);
 
         // 归一化方向向量（避免斜向移动更快）
         if direction.length_squared() > 0.0 {
@@ -59,7 +64,11 @@ pub fn camera_controller_system(
     }
 }
 
-/// 注册镜头控制系统
-pub fn register_camera_controller(app: &mut App) {
-    app.add_systems(Update, camera_controller_system);
+pub struct CameraControlPlugin;
+
+impl Plugin for CameraControlPlugin {
+    fn build(&self, app: &mut App) {
+        // 注册镜头控制系统
+        app.add_systems(Update, camera_controller_system);
+    }
 }

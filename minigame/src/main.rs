@@ -1,6 +1,8 @@
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 use minigame::core::hex_grid::HexGridConfig;
+use minigame::core::camera::CameraControlPlugin;
+use minigame::core::interaction::MapInteractionPlugin;
 use minigame::level::loader::LevelLoaderPlugin;
 use minigame::ui::cards::EntityCardsPlugin;
 use minigame::ui::hud::HudPlugin;
@@ -26,7 +28,7 @@ fn close_window_on_esc(
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_plugins((LevelLoaderPlugin, HudPlugin, EntityCardsPlugin))
+        .add_plugins((CameraControlPlugin, LevelLoaderPlugin, HudPlugin, EntityCardsPlugin, MapInteractionPlugin))
         .insert_resource(HexGridConfig::new(50.0, 10, 10, 5.0))
         .add_systems(
             Startup,

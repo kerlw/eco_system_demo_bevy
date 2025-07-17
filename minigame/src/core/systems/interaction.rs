@@ -1,5 +1,5 @@
 use crate::core::systems::hex_grid::HexCell;
-use bevy::input::mouse::{MouseButton};
+use bevy::input::mouse::MouseButton;
 use bevy::prelude::*;
 
 // 动画曲线类型
@@ -184,17 +184,21 @@ fn lerp(a: f32, b: f32, t: f32) -> f32 {
     a + (b - a) * t
 }
 
-// 在app构建时注册
-pub fn register_interaction(app: &mut App) {
-    app.init_resource::<HexInteraction>()
-        .init_resource::<HexColors>()
-        .add_systems(
-            Update,
-            (
-                hex_click_system,
-                hex_hover_system,
-                click_effect_system,
-                selected_effect_system,
-            ),
-        );
+pub struct MapInteractionPlugin;
+
+impl Plugin for MapInteractionPlugin {
+    // 在app构建时注册
+    fn build(&self, app: &mut App) {
+        app.init_resource::<HexInteraction>()
+            .init_resource::<HexColors>()
+            .add_systems(
+                Update,
+                (
+                    hex_click_system,
+                    hex_hover_system,
+                    click_effect_system,
+                    selected_effect_system,
+                ),
+            );
+    }
 }

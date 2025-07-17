@@ -1,8 +1,8 @@
 //! 场景系统实现
 
-use crate::core::components::{
+use crate::core::{camera::CameraController, components::{
     EnergyStore, EntityType, Hunger, MoveTo, Player, Position, Species,
-};
+}};
 use bevy::prelude::*;
 
 /// 初始化测试场景
@@ -17,6 +17,7 @@ pub fn setup_scene(
         // Transform::from_xyz(0.0, 40.0, 0.0).looking_at(Vec3::ZERO, Vec3::Z),
         // Visibility::default(),
         Camera2d::default(),
+        CameraController::default(),
     ));
 
     // 测试实体 - 可移动狐狸
