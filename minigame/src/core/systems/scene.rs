@@ -1,15 +1,15 @@
 //! 场景系统实现
 
 use crate::core::components::{
-    EnergyStore, EntityType, Hunger, MoveTo, Player, Position, Render, Species,
+    EnergyStore, EntityType, Hunger, MoveTo, Player, Position, Species,
 };
 use bevy::prelude::*;
 
 /// 初始化测试场景
 pub fn setup_scene(
     mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    _meshes: ResMut<Assets<Mesh>>,
+    _materials: ResMut<Assets<StandardMaterial>>,
 ) {
     // 摄像机
     commands.spawn((

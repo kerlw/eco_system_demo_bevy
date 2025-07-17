@@ -25,7 +25,6 @@ impl Plugin for EntityCardsPlugin {
 }
 
 fn load_card_assets(
-    mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut card_assets: ResMut<CardAssets>,
 ) {
@@ -44,7 +43,7 @@ fn spawn_entity_card(
         return;
     }
 
-    for entity in selected_entity.iter() {
+    for _ in selected_entity.iter() {
         let card = commands
             .spawn((
                 EntityCard,
@@ -88,7 +87,7 @@ fn spawn_entity_card(
 fn update_entity_card(
     mut commands: Commands,
     card_assets: Res<CardAssets>,
-    mut card_query: Query<Entity, With<EntityCard>>,
+    card_query: Query<Entity, With<EntityCard>>,
     selected_entity: Query<&EntityProperties, With<Selected>>,
 ) {
     // 如果没有卡片实体，直接返回
