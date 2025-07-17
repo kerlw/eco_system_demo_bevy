@@ -2,6 +2,7 @@
 target/
 Cargo.lock
 .cargo/
+assets/
 
 # 编辑器文件
 .vscode/

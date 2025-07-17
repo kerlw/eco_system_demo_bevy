@@ -1,4 +1,6 @@
 pub mod core;
+pub mod level;
+pub mod ui;
 
 #[cfg(test)]
 mod tests {

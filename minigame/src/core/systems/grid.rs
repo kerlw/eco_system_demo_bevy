@@ -1,7 +1,4 @@
 //! 网格系统实现
-
-use std::f32::consts::PI;
-
 use super::super::components::Position;
 use super::super::hex_grid::{HexGridConfig, SpatialPartition, grid_to_world};
 use crate::core::systems::hex_grid::{HexCell, create_hex_mesh};
@@ -14,7 +11,7 @@ pub struct SharedHexMesh(Handle<Mesh>);
 pub fn setup_grid(
     mut commands: Commands,
     config: Res<HexGridConfig>,
-    mut meshes: ResMut<Assets<Mesh>>,
+    meshes: ResMut<Assets<Mesh>>,
 ) {
     let size = config.size;
     commands.spawn((
