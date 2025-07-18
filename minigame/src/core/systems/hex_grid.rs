@@ -1,11 +1,32 @@
 use bevy::prelude::*;
+use bevy::render::render_resource::{AsBindGroup, ShaderRef};
+use bevy::sprite::Material2d;
 
 /// 六边形网格单元组件
 #[derive(Component)]
 pub struct HexCell {
     pub hex: HexCoord,
-    pub mesh: Handle<Mesh>,
-    pub material: Handle<ColorMaterial>,
+}
+
+// 自定义边框着色器
+#[derive(AsBindGroup, Debug, Clone, Asset, TypePath)]
+pub struct HexagonBorderMaterial {
+    #[uniform(0)]
+    pub color: LinearRgba,
+    #[uniform(0)]
+    pub border_color: LinearRgba,
+    #[uniform(0)]
+    pub border_width: f32,
+}
+
+impl Material2d for HexagonBorderMaterial {
+    fn fragment_shader() -> ShaderRef {
+        "shaders/hexagon_border.wgsl".into()
+    }
+
+    // fn vertex_shader() -> ShaderRef {
+    //     "shaders/hexagon_border.wgsl".into()
+    // }
 }
 
 /// 创建可复用的六边形网格

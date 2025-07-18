@@ -1,7 +1,8 @@
 //! 网格系统实现
 use super::super::components::Position;
 use super::super::hex_grid::{HexGridConfig, SpatialPartition, grid_to_world};
-use crate::core::systems::hex_grid::{HexCell, create_hex_mesh};
+use crate::core::systems::hex_grid::{HexCell, HexagonBorderMaterial, create_hex_mesh};
+use bevy::color::palettes::css::*;
 use bevy::prelude::*;
 
 #[derive(Resource)]
@@ -27,9 +28,13 @@ pub fn render_grid_system(
     mut commands: Commands,
     config: Res<HexGridConfig>,
     shared_mesh: Res<SharedHexMesh>,
-    mut materials: ResMut<Assets<ColorMaterial>>,
+    mut materials: ResMut<Assets<HexagonBorderMaterial>>,
 ) {
-    let material = materials.add(Color::Srgba(Srgba::GREEN));
+    let material = materials.add(HexagonBorderMaterial {
+        color: LIME.into(),
+        border_color: WHITE.into(),
+        border_width: 0.05,
+    });
 
     for x in 0..config.width as i32 {
         for y in 0..config.height as i32 {
@@ -42,8 +47,6 @@ pub fn render_grid_system(
                 MeshMaterial2d(material.clone()),
                 HexCell {
                     hex: (x, y).into(),
-                    mesh: shared_mesh.0.clone(),
-                    material: material.clone(),
                 },
             ));
         }

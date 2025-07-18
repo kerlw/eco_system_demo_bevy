@@ -2,7 +2,7 @@
 target/
 Cargo.lock
 .cargo/
-assets/
+
 
 # 编辑器文件
 .vscode/
@@ -13,3 +13,5 @@ assets/
 Thumbs.db
 
 *.ttc
+*.png
+assets/levels/
