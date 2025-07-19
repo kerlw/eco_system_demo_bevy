@@ -1,5 +1,4 @@
 use crate::core::systems::hex_grid::{HexCell, HexagonBorderMaterial};
-use bevy::color::palettes::css::*;
 use bevy::input::mouse::MouseButton;
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
@@ -156,7 +155,6 @@ pub fn hex_hover_system(
                 let is_hovered = distance <= interaction.hover_radius;
 
                 if is_hovered {
-                    info!("distance: {}", distance);
                     commands.entity(entity).insert(Hovered);
                     materials.get_mut(material.0.id()).map(|m| {
                         m.color = colors.hovered.to_linear();
@@ -204,18 +202,19 @@ pub fn selected_effect_system(
     mut materials: ResMut<Assets<HexagonBorderMaterial>>,
     mut query: Query<(&mut Selected, &mut MeshMaterial2d<HexagonBorderMaterial>)>,
 ) {
-    for (mut selected, mut material) in query.iter_mut() {
+    for (mut selected, material) in query.iter_mut() {
+        info!("selected_effect_system");
         selected.timer.tick(time.delta());
 
         // 选中状态闪烁效果
         let blink_factor = (selected.timer.elapsed_secs() * 5.0).sin().abs();
         let color = colors.selected.to_srgba() * (0.7 + 0.3 * blink_factor);
 
-        *material = MeshMaterial2d(materials.add(HexagonBorderMaterial {
-            color: color.into(),
-            border_color: AQUA.into(),
-            border_width: 0.1,
-        }));
+        materials.get_mut(material.0.id()).map(|m| {
+            m.color = color.into();
+            // border_color: AQUA.into(),
+            // border_width: 0.1,
+        });
     }
 }
 
