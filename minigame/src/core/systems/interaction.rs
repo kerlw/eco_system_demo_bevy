@@ -1,6 +1,14 @@
-use crate::core::systems::hex_grid::HexCell;
+use crate::core::systems::hex_grid::{HexCell, HexagonBorderMaterial};
+use bevy::color::palettes::css::*;
 use bevy::input::mouse::MouseButton;
 use bevy::prelude::*;
+use bevy::window::PrimaryWindow;
+
+#[derive(Resource, Default)]
+pub struct GlobalMousePosition {
+    pub is_in_primary_window: bool,
+    pub pos: Vec2,
+}
 
 // 动画曲线类型
 #[derive(Resource, Clone, Copy)]
@@ -46,8 +54,8 @@ pub struct HexInteraction {
 impl Default for HexInteraction {
     fn default() -> Self {
         Self {
-            click_radius: 50.0,
-            hover_radius: 55.0,
+            click_radius: 43.3,
+            hover_radius: 43.3,
             click_effect_duration: 0.3,
             click_effect_scale: 1.2,
             particle_speed: 200.0,
@@ -77,11 +85,26 @@ impl Default for HexColors {
     }
 }
 
+pub fn update_global_mouse_position_system(
+    mut mouse_position: ResMut<GlobalMousePosition>,
+    windows: Query<&mut Window, With<PrimaryWindow>>,
+) {
+    if let Ok(w) = windows.single() {
+        if let Some(pos) = w.cursor_position() {
+            mouse_position.is_in_primary_window = true;
+            mouse_position.pos = pos;
+            return;
+        }
+    }
+
+    mouse_position.is_in_primary_window = false;
+}
+
 // 点击检测系统
 pub fn hex_click_system(
     interaction: Res<HexInteraction>,
     mouse: Res<ButtonInput<MouseButton>>,
-    mut cursor_events: EventReader<CursorMoved>,
+    mouse_position: Res<GlobalMousePosition>,
     query: Query<(Entity, &Transform, &HexCell)>,
     mut commands: Commands,
 ) {
@@ -89,9 +112,11 @@ pub fn hex_click_system(
         return;
     }
 
-    let Some(cursor_pos) = cursor_events.read().last().and_then(|w| Some(w.position)) else {
+    if !mouse_position.is_in_primary_window {
         return;
-    };
+    }
+
+    let cursor_pos = mouse_position.pos;
 
     for (entity, transform, _) in query.iter() {
         let distance = transform.translation.truncate().distance(cursor_pos);
@@ -114,25 +139,35 @@ pub fn hex_click_system(
 pub fn hex_hover_system(
     mut commands: Commands,
     interaction: Res<HexInteraction>,
-    mut cursor_events: EventReader<CursorMoved>,
-    mut query: Query<(Entity, &Transform, &mut MeshMaterial2d<ColorMaterial>), With<HexCell>>,
+    mouse_position: Res<GlobalMousePosition>,
+    camera_q: Query<(&Camera, &GlobalTransform)>,
+    mut query: Query<(Entity, &Transform, &MeshMaterial2d<HexagonBorderMaterial>), With<HexCell>>,
     colors: Res<HexColors>,
-    mut materials: ResMut<Assets<ColorMaterial>>,
+    mut materials: ResMut<Assets<HexagonBorderMaterial>>,
 ) {
-    let Some(cursor_pos) = cursor_events.read().last().and_then(|w| Some(w.position)) else {
+    if !mouse_position.is_in_primary_window {
         return;
-    };
+    }
+    let cursor_pos = mouse_position.pos;
+    if let Ok((camera, cam_transform)) = camera_q.single() {
+        if let Ok(pos) = camera.viewport_to_world_2d(cam_transform, cursor_pos) {
+            for (entity, transform, material) in query.iter_mut() {
+                let distance = transform.translation.truncate().distance(pos);
+                let is_hovered = distance <= interaction.hover_radius;
 
-    for (entity, transform, mut material) in query.iter_mut() {
-        let distance = transform.translation.truncate().distance(cursor_pos);
-        let is_hovered = distance <= interaction.hover_radius;
-
-        if is_hovered {
-            commands.entity(entity).insert(Hovered);
-            *material = MeshMaterial2d(materials.add(colors.hovered));
-        } else {
-            commands.entity(entity).remove::<Hovered>();
-            *material = MeshMaterial2d(materials.add(colors.normal));
+                if is_hovered {
+                    info!("distance: {}", distance);
+                    commands.entity(entity).insert(Hovered);
+                    materials.get_mut(material.0.id()).map(|m| {
+                        m.color = colors.hovered.to_linear();
+                    });
+                } else {
+                    commands.entity(entity).remove::<Hovered>();
+                    materials.get_mut(material.0.id()).map(|m| {
+                        m.color = colors.normal.to_linear();
+                    });
+                }
+            }
         }
     }
 }
@@ -166,8 +201,8 @@ pub fn click_effect_system(
 pub fn selected_effect_system(
     time: Res<Time>,
     colors: Res<HexColors>,
-    mut materials: ResMut<Assets<ColorMaterial>>,
-    mut query: Query<(&mut Selected, &mut MeshMaterial2d<ColorMaterial>)>,
+    mut materials: ResMut<Assets<HexagonBorderMaterial>>,
+    mut query: Query<(&mut Selected, &mut MeshMaterial2d<HexagonBorderMaterial>)>,
 ) {
     for (mut selected, mut material) in query.iter_mut() {
         selected.timer.tick(time.delta());
@@ -176,7 +211,11 @@ pub fn selected_effect_system(
         let blink_factor = (selected.timer.elapsed_secs() * 5.0).sin().abs();
         let color = colors.selected.to_srgba() * (0.7 + 0.3 * blink_factor);
 
-        *material = MeshMaterial2d(materials.add(Color::Srgba(color)));
+        *material = MeshMaterial2d(materials.add(HexagonBorderMaterial {
+            color: color.into(),
+            border_color: AQUA.into(),
+            border_width: 0.1,
+        }));
     }
 }
 
@@ -191,14 +230,19 @@ impl Plugin for MapInteractionPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<HexInteraction>()
             .init_resource::<HexColors>()
+            .insert_resource::<GlobalMousePosition>(GlobalMousePosition::default())
             .add_systems(
                 Update,
                 (
-                    hex_click_system,
-                    hex_hover_system,
-                    click_effect_system,
-                    selected_effect_system,
-                ),
+                    update_global_mouse_position_system,
+                    (
+                        hex_click_system,
+                        hex_hover_system,
+                        click_effect_system,
+                        selected_effect_system,
+                    ),
+                )
+                    .chain(),
             );
     }
 }

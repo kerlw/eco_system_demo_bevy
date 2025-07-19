@@ -30,12 +30,6 @@ pub fn render_grid_system(
     shared_mesh: Res<SharedHexMesh>,
     mut materials: ResMut<Assets<HexagonBorderMaterial>>,
 ) {
-    let material = materials.add(HexagonBorderMaterial {
-        color: LIME.into(),
-        border_color: WHITE.into(),
-        border_width: 0.05,
-    });
-
     for x in 0..config.width as i32 {
         for y in 0..config.height as i32 {
             let pos = Position { x, y };
@@ -44,10 +38,12 @@ pub fn render_grid_system(
             commands.spawn((
                 Mesh2d(shared_mesh.0.clone()),
                 Transform::from_translation(center),
-                MeshMaterial2d(material.clone()),
-                HexCell {
-                    hex: (x, y).into(),
-                },
+                MeshMaterial2d(materials.add(HexagonBorderMaterial {
+                    color: LIME.into(),
+                    border_color: WHITE.into(),
+                    border_width: 0.05,
+                })),
+                HexCell { hex: (x, y).into() },
             ));
         }
     }
