@@ -1,11 +1,10 @@
 use bevy::prelude::*;
 use bevy::sprite::Material2dPlugin;
 use bevy::window::PrimaryWindow;
-use minigame::core::hex_grid::HexGridConfig;
 use minigame::core::camera::CameraControlPlugin;
+use minigame::core::hex_grid::HexGridConfig;
 use minigame::core::interaction::MapInteractionPlugin;
 use minigame::core::systems::hex_grid::HexagonBorderMaterial;
-use minigame::level::loader::LevelLoaderPlugin;
 use minigame::ui::cards::EntityCardsPlugin;
 use minigame::ui::hud::HudPlugin;
 
@@ -31,7 +30,12 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_plugins(Material2dPlugin::<HexagonBorderMaterial>::default())
-        .add_plugins((CameraControlPlugin, LevelLoaderPlugin, HudPlugin, EntityCardsPlugin, MapInteractionPlugin))
+        .add_plugins((
+            CameraControlPlugin,
+            HudPlugin,
+            EntityCardsPlugin,
+            MapInteractionPlugin,
+        ))
         .insert_resource(HexGridConfig::new(50.0, 2, 2, 5.0))
         .add_systems(
             Startup,

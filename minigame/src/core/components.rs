@@ -1,6 +1,7 @@
 //! 核心ECS组件定义
 
 use bevy::prelude::*;
+use serde::{Deserialize, Serialize};
 use crate::core::hex_grid::HexGridConfig;
 
 /// 六边形网格坐标
@@ -29,14 +30,18 @@ pub struct Render {
 }
 
 /// 实体类型标记
-#[derive(Component, Debug)]
+#[derive(Component, Debug, Deserialize, Serialize, Clone)]
+#[serde(rename_all = "lowercase")]
+#[serde(tag = "type", content = "species")]
 pub enum EntityType {
+    Grass,
+    Rabbit,
+    Fox,
     Animal(Species),
-    Plant,
 }
 
 /// 动物种类
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum Species {
     Fox,
     Rabbit,
@@ -54,6 +59,12 @@ pub struct EnergyStore {
 pub struct Hunger {
     pub value: f32,
     pub max: f32,
+}
+
+/// 生命值组件
+#[derive(Component, Debug, Default)]
+pub struct Health {
+    pub value: Option<f32>,
 }
 
 /// 玩家标记

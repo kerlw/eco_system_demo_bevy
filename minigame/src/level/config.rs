@@ -1,38 +1,26 @@
 use serde::Deserialize;
+use crate::core::components::EntityType;
 
-/// 关卡配置数据结构
+/// 关卡配置
 #[derive(Debug, Deserialize)]
 pub struct LevelConfig {
-    /// 关卡ID
-    pub id: u32,
-    /// 关卡名称
     pub name: String,
-    /// 关卡描述
-    pub description: String,
-    /// 初始实体配置
+    pub width: i32,
+    pub height: i32,
     pub entities: Vec<EntityConfig>,
-    /// 胜利条件
-    pub win_conditions: WinConditions,
 }
 
 /// 实体配置
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct EntityConfig {
-    /// 实体类型
-    pub entity_type: String,
-    /// 初始位置(x,y)
-    pub position: (i32, i32),
-    /// 初始属性
-    pub properties: serde_json::Value,
-}
-
-/// 胜利条件
-#[derive(Debug, Deserialize)]
-pub struct WinConditions {
-    /// 需要维持的生态平衡时间(秒)
-    pub balance_duration: f32,
-    /// 最小实体数量
-    pub min_entities: u32,
-    /// 最大实体数量
-    pub max_entities: u32,
+    #[serde(rename = "type")]
+    pub entity_type: EntityType,
+    pub x: i32,
+    pub y: i32,
+    pub health: Option<f32>,
+    pub reproduction_rate: Option<f32>,
+    pub growth_rate: Option<f32>,
+    pub hunger_rate: Option<f32>,
+    pub vision_range: Option<i32>,
+    pub speed: Option<f32>,
 }
