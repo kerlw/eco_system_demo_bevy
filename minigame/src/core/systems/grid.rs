@@ -1,7 +1,5 @@
 //! 网格系统实现
-use super::super::components::Position;
-use super::super::hex_grid::{HexGridConfig, SpatialPartition, grid_to_world};
-use crate::core::systems::hex_grid::{HexCell, HexagonBorderMaterial, create_hex_mesh};
+use super::hex_grid::*;
 use bevy::color::palettes::css::*;
 use bevy::prelude::*;
 
@@ -30,12 +28,15 @@ pub fn render_grid_system(
     shared_mesh: Res<SharedHexMesh>,
     mut materials: ResMut<Assets<HexagonBorderMaterial>>,
 ) {
+    let mut grids = vec![];
+
+    // 构建所有地图格数组
     for x in 0..config.width as i32 {
         for y in 0..config.height as i32 {
             let pos = Position { x, y };
             let center = grid_to_world(pos, &config);
 
-            commands.spawn((
+            grids.push((
                 Mesh2d(shared_mesh.0.clone()),
                 Transform::from_translation(center),
                 MeshMaterial2d(materials.add(HexagonBorderMaterial {
@@ -47,4 +48,6 @@ pub fn render_grid_system(
             ));
         }
     }
+
+    commands.spawn_batch(grids);
 }

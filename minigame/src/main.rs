@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy::sprite::Material2dPlugin;
 use bevy::window::PrimaryWindow;
 use minigame::core::camera::CameraControlPlugin;
-use minigame::core::hex_grid::HexGridConfig;
+use minigame::core::systems::hex_grid::HexGridConfig;
 use minigame::core::interaction::MapInteractionPlugin;
 use minigame::core::systems::hex_grid::HexagonBorderMaterial;
 use minigame::sprite::sprite_mgr::SpriteManagerPlugin;

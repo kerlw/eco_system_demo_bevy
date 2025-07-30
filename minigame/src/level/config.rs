@@ -1,5 +1,6 @@
-use serde::Deserialize;
 use crate::core::components::EntityType;
+use bevy::math::Vec3;
+use serde::Deserialize;
 
 /// 关卡配置
 #[derive(Debug, Deserialize)]
@@ -7,6 +8,7 @@ pub struct LevelConfig {
     pub name: String,
     pub width: i32,
     pub height: i32,
+    pub startup_camera_pos: Option<Vec3>, // 初始相机位置，可选项
     pub entities: Vec<EntityConfig>,
 }
 

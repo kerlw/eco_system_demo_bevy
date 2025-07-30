@@ -1,12 +1,8 @@
 //! 实体移动系统实现
-
-use bevy::prelude::*;
-use super::super::{
-    components::{Position, EnergyStore, MoveTo},
-    hex_grid::{HexGridConfig, hex_distance, is_valid_position},
-};
-
+use super::super::components::{EnergyStore, MoveTo};
+use super::super::hex_grid::{HexGridConfig, Position, hex_distance, is_valid_position};
 use crate::core::state::GameState;
+use bevy::prelude::*;
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone, SystemSet)]
 pub enum MovementSystemSet {
@@ -29,12 +25,15 @@ pub fn configure_movement_sets(app: &mut App) {
 }
 
 pub fn register_movement_systems(app: &mut App) {
-    app.add_systems(Update, (
-        keyboard_input_system.in_set(MovementSystemSet::Input),
-        pathfinding_system.in_set(MovementSystemSet::Pathfinding),
-        update_paths.in_set(MovementSystemSet::Movement),
-        movement_system.in_set(MovementSystemSet::Movement),
-    ));
+    app.add_systems(
+        Update,
+        (
+            keyboard_input_system.in_set(MovementSystemSet::Input),
+            pathfinding_system.in_set(MovementSystemSet::Pathfinding),
+            update_paths.in_set(MovementSystemSet::Movement),
+            movement_system.in_set(MovementSystemSet::Movement),
+        ),
+    );
 }
 
 /// 键盘输入系统
@@ -72,10 +71,7 @@ pub fn keyboard_input_system(
 }
 
 /// 寻路系统
-pub fn pathfinding_system(
-    mut query: Query<(&Position, &mut MoveTo)>,
-    _config: Res<HexGridConfig>,
-) {
+pub fn pathfinding_system(mut query: Query<(&Position, &mut MoveTo)>, _config: Res<HexGridConfig>) {
     for (current_pos, mut move_to) in &mut query {
         if move_to.path.is_empty() || hex_distance(*current_pos, move_to.target) > 1 {
             // 简单直线移动作为临时实现
@@ -86,9 +82,7 @@ pub fn pathfinding_system(
 }
 
 /// 路径更新系统
-pub fn update_paths(
-    query: Query<(&Position, &MoveTo), Changed<Position>>,
-) {
+pub fn update_paths(query: Query<(&Position, &MoveTo), Changed<Position>>) {
     for (_position, _move_to) in query.iter() {
         // 路径更新逻辑
         // 当位置变化时更新路径
@@ -111,7 +105,7 @@ pub fn movement_system(
                     commands.entity(entity).remove::<MoveTo>();
                     continue;
                 }
-                
+
                 // 消耗能量
                 energy.value -= (0.5 * energy.max) * time.delta_secs();
             }

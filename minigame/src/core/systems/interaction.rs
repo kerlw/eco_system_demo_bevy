@@ -161,9 +161,9 @@ pub fn hex_hover_system(
                     });
                 } else {
                     // // commands.entity(entity).remove::<Hovered>();
-                    // materials.get_mut(material.0.id()).map(|m| {
-                    //     m.color = colors.normal.to_linear();
-                    // });
+                    materials.get_mut(material.0.id()).map(|m| {
+                        m.color = colors.normal.to_linear();
+                    });
                 }
             }
         }

@@ -1,8 +1,10 @@
 //! 场景系统实现
 
-use crate::core::{camera::CameraController, components::{
-    EnergyStore, EntityType, Hunger, MoveTo, Player, Position, Species,
-}};
+use crate::core::{
+    camera::CameraController,
+    components::{EnergyStore, EntityType, Hunger, MoveTo, Player, Species},
+    hex_grid::Position,
+};
 use bevy::prelude::*;
 
 /// 初始化测试场景

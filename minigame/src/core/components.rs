@@ -2,25 +2,8 @@
 
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
-use crate::core::hex_grid::HexGridConfig;
 
-/// 六边形网格坐标
-#[derive(Component, Debug, Clone, Copy, PartialEq)]
-pub struct Position {
-    pub x: i32,
-    pub y: i32,
-}
-
-impl Position {
-    pub fn move_towards(&mut self, target: &Position, speed: f32, _config: &HexGridConfig) {
-        // 基于六边形网格的移动逻辑
-        let dx = (target.x - self.x).clamp(-1, 1);
-        let dy = (target.y - self.y).clamp(-1, 1);
-        
-        self.x += dx * speed as i32;
-        self.y += dy * speed as i32;
-    }
-}
+use crate::core::systems::hex_grid::Position;
 
 /// 渲染信息
 #[derive(Component)]
