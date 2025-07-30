@@ -28,15 +28,7 @@ pub fn setup_scene(
 
     // 测试实体 - 可移动狐狸
     commands.spawn((
-        Sprite {
-            image: sprite_manager.texture.clone(),
-            texture_atlas: Some(TextureAtlas {
-                layout: sprite_manager.texture_atlas_layouts.clone(),
-                index: 1,
-            }),
-            custom_size: Some(Vec2::new(64.0, 64.0)),
-            ..Default::default()
-        },
+        sprite_manager.get_sprite_by_name("fox"),
         /* {
             custom_size: Some(Vec2::new(10.0, 10.0)),12
             color: Color::srgb(1.0, 0.0, 0.0),
