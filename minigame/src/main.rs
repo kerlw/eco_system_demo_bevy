@@ -2,10 +2,10 @@ use bevy::prelude::*;
 use bevy::sprite::Material2dPlugin;
 use bevy::window::PrimaryWindow;
 use minigame::core::camera::CameraControlPlugin;
-use minigame::core::systems::hex_grid::HexGridConfig;
 use minigame::core::interaction::MapInteractionPlugin;
+use minigame::core::systems::hex_grid::HexGridConfig;
 use minigame::core::systems::hex_grid::HexagonBorderMaterial;
-use minigame::sprite::sprite_mgr::SpriteManagerPlugin;
+use minigame::sprite::sprite_mgr::{SpriteManagerPlugin, setup_sprite_res};
 use minigame::ui::cards::EntityCardsPlugin;
 use minigame::ui::hud::HudPlugin;
 
@@ -42,11 +42,12 @@ fn main() {
         .add_systems(
             Startup,
             (
-                minigame::core::systems::scene::setup_scene,
                 minigame::core::systems::grid::setup_grid,
+                minigame::core::systems::scene::setup_scene,
                 minigame::core::systems::grid::render_grid_system,
             )
-                .chain(),
+                .chain()
+                .after(setup_sprite_res),
         )
         .add_systems(
             Update,

@@ -1,5 +1,5 @@
 //! 实体移动系统实现
-use super::super::components::{EnergyStore, MoveTo};
+use super::super::components::{EnergyStore, VisionRange, MoveTo};
 use super::super::hex_grid::{HexGridConfig, Position, hex_distance, is_valid_position};
 use crate::core::state::GameState;
 use bevy::prelude::*;

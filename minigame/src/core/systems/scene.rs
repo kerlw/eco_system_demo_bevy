@@ -1,9 +1,12 @@
 //! 场景系统实现
 
-use crate::core::{
-    camera::CameraController,
-    components::{EnergyStore, EntityType, Hunger, MoveTo, Player, Species},
-    hex_grid::Position,
+use crate::{
+    core::{
+        camera::CameraController,
+        components::{EnergyStore, EntityType, MoveTo, Player, Species},
+        hex_grid::Position,
+    },
+    sprite::sprite_mgr::SpriteManager,
 };
 use bevy::prelude::*;
 
@@ -12,6 +15,7 @@ pub fn setup_scene(
     mut commands: Commands,
     _meshes: ResMut<Assets<Mesh>>,
     _materials: ResMut<Assets<StandardMaterial>>,
+    sprite_manager: ResMut<SpriteManager>,
 ) {
     // 摄像机
     commands.spawn((
@@ -25,20 +29,25 @@ pub fn setup_scene(
     // 测试实体 - 可移动狐狸
     commands.spawn((
         Sprite {
-            custom_size: Some(Vec2::new(10.0, 10.0)),
-            color: Color::srgb(1.0, 0.0, 0.0),
+            image: sprite_manager.texture.clone(),
+            texture_atlas: Some(TextureAtlas {
+                layout: sprite_manager.texture_atlas_layouts.clone(),
+                index: 1,
+            }),
+            custom_size: Some(Vec2::new(64.0, 64.0)),
             ..Default::default()
         },
+        /* {
+            custom_size: Some(Vec2::new(10.0, 10.0)),12
+            color: Color::srgb(1.0, 0.0, 0.0),
+            ..Default::default()
+        }, */
         Transform::from_translation(Vec3::new(0.0, 0.0, 2.0)),
         // 材质组件
         Position { x: 5, y: 5 },
         EntityType::Animal(Species::Fox),
         EnergyStore {
             value: 100.0,
-            max: 100.0,
-        },
-        Hunger {
-            value: 50.0,
             max: 100.0,
         },
         MoveTo {

@@ -1,7 +1,7 @@
 //! 实体状态机系统实现
 
+use super::super::components::*;
 use bevy::prelude::*;
-use super::super::components::EnergyStore;
 
 /// 实体状态类型
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -46,9 +46,7 @@ impl State {
 
 /// 状态转换系统
 #[allow(unused_variables)]
-pub fn state_transition_system(
-    mut query: Query<(&mut State, &EnergyStore, Option<&VisionRange>)>,
-) {
+pub fn state_transition_system(mut query: Query<(&mut State, &EnergyStore, Option<&VisionRange>)>) {
     for (mut state, energy, vision_range) in query.iter_mut() {
         state.previous = state.current.clone();
 
@@ -65,9 +63,7 @@ pub fn state_transition_system(
 }
 
 /// 状态机更新系统
-pub fn update_state_machine(
-    mut query: Query<&mut State>,
-) {
+pub fn update_state_machine(mut query: Query<&mut State>) {
     for _state in query.iter_mut() {
         // 状态机更新逻辑
     }
@@ -75,18 +71,14 @@ pub fn update_state_machine(
 
 /// 状态转换条件检查系统
 #[allow(unused_variables)]
-pub fn transition_states(
-    query: Query<(&State, &EnergyStore), Changed<State>>,
-) {
+pub fn transition_states(query: Query<(&State, &EnergyStore), Changed<State>>) {
     for (state, energy) in query.iter() {
         // 状态转换条件检查逻辑
     }
 }
 
 /// 能量更新系统
-pub fn update_energy(
-    mut query: Query<&mut EnergyStore>,
-) {
+pub fn update_energy(mut query: Query<&mut EnergyStore>) {
     for mut energy in query.iter_mut() {
         // 简单能量更新逻辑
         match energy.value {
@@ -101,17 +93,19 @@ pub fn update_energy(
 pub fn state_machine_schedule() -> Schedule {
     let mut schedule = Schedule::default();
     schedule.add_systems(
-        (update_state_machine, update_energy, transition_states, state_transition_system)
-            .run_if(in_state(crate::core::state::GameState::Playing))
+        (
+            update_state_machine,
+            update_energy,
+            transition_states,
+            state_transition_system,
+        )
+            .run_if(in_state(crate::core::state::GameState::Playing)),
     );
     schedule
 }
 
 /// 状态机主系统
-pub fn state_machine_system(
-    mut query: Query<&mut State>,
-    time: Res<Time>
-) {
+pub fn state_machine_system(mut query: Query<&mut State>, time: Res<Time>) {
     for mut state in query.iter_mut() {
         state.update(&time);
     }
