@@ -134,9 +134,9 @@ pub fn hex_click_system(
     }
 }
 
-// 悬停检测系统
+// 悬停检测系统, 遍历所有的地图块效率太低。应当建立地图块的图元信息二维数组，进行精准定位计算
 pub fn hex_hover_system(
-    mut commands: Commands,
+    // mut commands: Commands,
     interaction: Res<HexInteraction>,
     mouse_position: Res<GlobalMousePosition>,
     camera_q: Query<(&Camera, &GlobalTransform)>,
@@ -150,20 +150,20 @@ pub fn hex_hover_system(
     let cursor_pos = mouse_position.pos;
     if let Ok((camera, cam_transform)) = camera_q.single() {
         if let Ok(pos) = camera.viewport_to_world_2d(cam_transform, cursor_pos) {
-            for (entity, transform, material) in query.iter_mut() {
+            for (_entity, transform, material) in query.iter_mut() {
                 let distance = transform.translation.truncate().distance(pos);
                 let is_hovered = distance <= interaction.hover_radius;
 
                 if is_hovered {
-                    commands.entity(entity).insert(Hovered);
+                    // commands.entity(entity).insert(Hovered);
                     materials.get_mut(material.0.id()).map(|m| {
                         m.color = colors.hovered.to_linear();
                     });
                 } else {
-                    commands.entity(entity).remove::<Hovered>();
-                    materials.get_mut(material.0.id()).map(|m| {
-                        m.color = colors.normal.to_linear();
-                    });
+                    // // commands.entity(entity).remove::<Hovered>();
+                    // materials.get_mut(material.0.id()).map(|m| {
+                    //     m.color = colors.normal.to_linear();
+                    // });
                 }
             }
         }

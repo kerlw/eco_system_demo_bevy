@@ -7,6 +7,7 @@ use minigame::core::interaction::MapInteractionPlugin;
 use minigame::core::systems::hex_grid::HexagonBorderMaterial;
 use minigame::ui::cards::EntityCardsPlugin;
 use minigame::ui::hud::HudPlugin;
+use minigame::sprite::sprite_mgr::SpriteManagerPlugin;
 
 fn close_window_on_esc(
     mut window_events: EventWriter<bevy::window::WindowCloseRequested>,
@@ -35,8 +36,9 @@ fn main() {
             HudPlugin,
             EntityCardsPlugin,
             MapInteractionPlugin,
+            SpriteManagerPlugin,
         ))
-        .insert_resource(HexGridConfig::new(50.0, 2, 2, 5.0))
+        .insert_resource(HexGridConfig::new(50.0, 50, 50, 5.0))
         .add_systems(
             Startup,
             (
