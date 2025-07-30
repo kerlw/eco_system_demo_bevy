@@ -47,9 +47,9 @@ impl State {
 /// 状态转换系统
 #[allow(unused_variables)]
 pub fn state_transition_system(
-    mut query: Query<(&mut State, &EnergyStore)>,
+    mut query: Query<(&mut State, &EnergyStore, Option<&VisionRange>)>,
 ) {
-    for (mut state, energy) in query.iter_mut() {
+    for (mut state, energy, vision_range) in query.iter_mut() {
         state.previous = state.current.clone();
 
         match state.current {

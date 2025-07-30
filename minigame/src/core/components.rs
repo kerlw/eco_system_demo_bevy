@@ -42,6 +42,7 @@ pub struct EnergyStore {
 pub struct Hunger {
     pub value: f32,
     pub max: f32,
+    pub is_searching: bool,
 }
 
 /// 生命值组件
@@ -60,6 +61,12 @@ pub struct MoveTo {
     pub target: Position,
     pub path: Vec<Position>,
     pub speed: f32,
+}
+
+/// 视野范围
+#[derive(Component, Debug)]
+pub struct VisionRange {
+    pub radius: i32,
 }
 
 /// 空间分区

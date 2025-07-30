@@ -98,6 +98,9 @@ pub fn spawn_entity(commands: &mut Commands, config: EntityConfig) -> Entity {
                     speed: config.speed.unwrap_or(1.0),
                 },
                 Rabbit,
+                VisionRange {
+                    radius: config.vision_range.unwrap_or(5),
+                },
             ));
         }
         EntityType::Fox => {
@@ -109,6 +112,9 @@ pub fn spawn_entity(commands: &mut Commands, config: EntityConfig) -> Entity {
                     speed: config.speed.unwrap_or(1.2),
                 },
                 Fox,
+                VisionRange {
+                    radius: config.vision_range.unwrap_or(7),
+                },
             ));
         }
     }

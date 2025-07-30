@@ -71,9 +71,18 @@ pub fn keyboard_input_system(
 }
 
 /// 寻路系统
-pub fn pathfinding_system(mut query: Query<(&Position, &mut MoveTo)>, _config: Res<HexGridConfig>) {
-    for (current_pos, mut move_to) in &mut query {
+pub fn pathfinding_system(
+    mut query: Query<(&Position, &mut MoveTo, Option<&VisionRange>)>,
+    _config: Res<HexGridConfig>,
+) {
+    for (current_pos, mut move_to, vision_range) in &mut query {
         if move_to.path.is_empty() || hex_distance(*current_pos, move_to.target) > 1 {
+            // 检查目标是否在视野范围内
+            if let Some(vision_range) = vision_range {
+                if hex_distance(*current_pos, move_to.target) > vision_range.radius {
+                    continue;
+                }
+            }
             // 简单直线移动作为临时实现
             // TODO: 实现完整A*寻路算法
             move_to.path = vec![move_to.target];
@@ -93,11 +102,11 @@ pub fn update_paths(query: Query<(&Position, &MoveTo), Changed<Position>>) {
 #[allow(unused_variables)]
 pub fn movement_system(
     mut commands: Commands,
-    mut query: Query<(Entity, &mut Position, &mut MoveTo, Option<&mut EnergyStore>)>,
+    mut query: Query<(Entity, &mut Position, &mut MoveTo, Option<&mut EnergyStore>, Option<&VisionRange>)>,
     time: Res<Time>,
     config: Res<HexGridConfig>,
 ) {
-    for (entity, mut position, mut move_to, mut energy) in &mut query {
+    for (entity, mut position, mut move_to, mut energy, vision_range) in &mut query {
         if let Some(next_pos) = move_to.path.first() {
             // 检查能量是否足够（如果有能量组件）
             if let Some(ref mut energy) = energy {
@@ -114,6 +123,14 @@ pub fn movement_system(
             if !is_valid_position(*next_pos, &config) {
                 commands.entity(entity).remove::<MoveTo>();
                 continue;
+            }
+
+            // 检查目标是否在视野范围内
+            if let Some(vision_range) = vision_range {
+                if hex_distance(*position, move_to.target) > vision_range.radius {
+                    commands.entity(entity).remove::<MoveTo>();
+                    continue;
+                }
             }
 
             // 更新位置
