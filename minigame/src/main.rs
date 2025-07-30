@@ -5,9 +5,9 @@ use minigame::core::camera::CameraControlPlugin;
 use minigame::core::hex_grid::HexGridConfig;
 use minigame::core::interaction::MapInteractionPlugin;
 use minigame::core::systems::hex_grid::HexagonBorderMaterial;
+use minigame::sprite::sprite_mgr::SpriteManagerPlugin;
 use minigame::ui::cards::EntityCardsPlugin;
 use minigame::ui::hud::HudPlugin;
-use minigame::sprite::sprite_mgr::SpriteManagerPlugin;
 
 fn close_window_on_esc(
     mut window_events: EventWriter<bevy::window::WindowCloseRequested>,
@@ -44,13 +44,14 @@ fn main() {
             (
                 minigame::core::systems::scene::setup_scene,
                 minigame::core::systems::grid::setup_grid,
-            ),
+                minigame::core::systems::grid::render_grid_system,
+            )
+                .chain(),
         )
         .add_systems(
             Update,
             (
                 minigame::core::systems::debug::debug_position_system,
-                minigame::core::systems::grid::render_grid_system,
                 minigame::core::systems::movement::movement_system,
                 minigame::core::systems::state_machine::state_machine_system,
                 close_window_on_esc,
