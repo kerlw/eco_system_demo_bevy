@@ -6,17 +6,21 @@ use crate::{
         components::{EnergyStore, EntityType, MoveTo, Player, Species},
         hex_grid::Position,
     },
+    level::{config::LevelConfigAsset, loader::*},
     sprite::sprite_mgr::SpriteManager,
 };
 use bevy::prelude::*;
 
 /// 初始化测试场景
-pub fn setup_scene(
+pub fn setup_game_scene(
     mut commands: Commands,
+    mut loader: ResMut<LevelLoader>,
+    level_data: Res<Assets<LevelConfigAsset>>,
     _meshes: ResMut<Assets<Mesh>>,
     _materials: ResMut<Assets<StandardMaterial>>,
     sprite_manager: ResMut<SpriteManager>,
 ) {
+    info!("Setup game scene");
     // 摄像机
     commands.spawn((
         // Camera3d::default(),

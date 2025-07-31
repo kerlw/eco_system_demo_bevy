@@ -21,6 +21,7 @@ pub fn setup_sprite_res(
     asset_server: Res<AssetServer>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
 ) {
+    info!("SpriteManager Plugin Loaded");
     let atlas_name = "sprite_sheet";
     let image_path = format!("textures/{}.png", atlas_name);
 
@@ -33,7 +34,6 @@ pub fn setup_sprite_res(
             AtlasConfig::default()
         }
     };
-    info!("sprite_manager_config_read_complete. {:?}", &config);
 
     let texture = asset_server.load(image_path);
     let layout = TextureAtlasLayout::from_grid(

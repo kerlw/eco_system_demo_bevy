@@ -2,6 +2,8 @@ use bevy::color::palettes::css::*;
 use bevy::prelude::*;
 use bevy::ui::{FlexDirection, PositionType, UiRect, Val};
 
+use crate::scenes::scene_selector::SceneSystemSet;
+
 /// HUD根节点组件标记
 #[derive(Component)]
 pub struct HudRoot;
@@ -26,8 +28,11 @@ pub struct HudPlugin;
 impl Plugin for HudPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<HudAssets>()
-            .add_systems(Startup, setup_hud)
-            .add_systems(Update, (update_score_text, update_time_text));
+            .add_systems(Startup, setup_hud.in_set(SceneSystemSet::GameSystems))
+            .add_systems(
+                Update,
+                (update_score_text, update_time_text).in_set(SceneSystemSet::GameSystems),
+            );
     }
 }
 
@@ -101,6 +106,6 @@ fn update_score_text(
 fn update_time_text(mut query: Query<&mut Text, With<TimeText>>, time: Res<Time>) {
     for mut text in &mut query {
         // 更新时间文本
-        *text  = Text::new(format!("Time: {:.1}s", time.elapsed_secs()));
+        *text = Text::new(format!("Time: {:.1}s", time.elapsed_secs()));
     }
 }

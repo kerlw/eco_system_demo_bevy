@@ -31,7 +31,6 @@ impl AtlasConfig {
         for cfg in config.sprites.iter() {
             config.sprites_map.insert(cfg.name.clone(), cfg.clone());
         }
-        info!("Sprite manager config read complete. {:?}", &config);
         return config;
     }
 }

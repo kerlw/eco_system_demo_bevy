@@ -1,6 +1,8 @@
 use bevy::input::{ButtonInput, keyboard::KeyCode};
 use bevy::prelude::*;
 
+use crate::scenes::scene_selector::SceneSystemSet;
+
 /// 镜头控制器组件
 #[derive(Component)]
 pub struct CameraController {
@@ -69,6 +71,9 @@ pub struct CameraControlPlugin;
 impl Plugin for CameraControlPlugin {
     fn build(&self, app: &mut App) {
         // 注册镜头控制系统
-        app.add_systems(Update, camera_controller_system);
+        app.add_systems(
+            Update,
+            camera_controller_system.in_set(SceneSystemSet::GameSystems),
+        );
     }
 }

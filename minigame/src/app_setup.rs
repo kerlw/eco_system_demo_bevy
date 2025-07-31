@@ -1,41 +1,63 @@
 //! 应用初始化和系统配置
 
 use bevy::prelude::*;
-use crate::core::{
-    components::Player,
-    systems::{
-        debug, grid, movement, 
-        scene, state_machine
-    },
-};
+use bevy::sprite::Material2dPlugin;
+use bevy::window::PrimaryWindow;
+use bevy::winit::WinitSettings;
+use minigame::core::camera::CameraControlPlugin;
+use minigame::core::interaction::MapInteractionPlugin;
+use minigame::core::state::GameState;
+use minigame::core::systems::hex_grid::HexagonBorderMaterial;
+use minigame::level::loader::LevelLoader;
+use minigame::scenes::scene_selector::SceneSelectorPlugin;
+use minigame::sprite::sprite_mgr::SpriteManagerPlugin;
+use minigame::ui::cards::EntityCardsPlugin;
+use minigame::ui::hud::HudPlugin;
+
+fn close_window_on_esc(
+    mut window_events: EventWriter<bevy::window::WindowCloseRequested>,
+    mut keyboard_events: EventReader<bevy::input::keyboard::KeyboardInput>,
+    window: Query<Entity, With<PrimaryWindow>>,
+) {
+    for event in keyboard_events.read() {
+        if event.key_code == KeyCode::Escape {
+            if event.state.is_pressed() {
+                if let Ok(window_entity) = window.single() {
+                    window_events.write(bevy::window::WindowCloseRequested {
+                        window: window_entity,
+                    });
+                }
+            }
+        }
+    }
+}
 
 /// 创建应用并配置系统
 pub fn create_app() -> App {
     let mut app = App::new();
-    
-    // 基础插件
     app.add_plugins(DefaultPlugins)
-        .init_resource::<grid::HexGridConfig>()
-        .insert_resource(grid::HexGridConfig::new(1.0, 10, 10, 5.0))
-        .add_systems(Startup, |config: Res<grid::HexGridConfig>| {
-            debug!("HexGridConfig initialized: width={}, height={}, size={}", 
-                config.width, config.height, config.size);
-        });
-
-    // 初始场景
-    app.add_systems(Startup, (
-        scene::spawn_camera,
-        scene::spawn_grid_entities,
-        scene::spawn_player,
-    ));
-
-    // 主游戏循环
-    app.add_systems(Update, (
-        debug::debug_position_system,
-        grid::render_grid_system,
-        movement::movement_systems(),
-        state_machine::state_machine_systems(),
-    ));
+        .insert_resource(WinitSettings::desktop_app())
+        .add_plugins(Material2dPlugin::<HexagonBorderMaterial>::default())
+        .insert_resource(LevelLoader::default())
+        .add_plugins((SpriteManagerPlugin, SceneSelectorPlugin))
+        .init_state::<GameState>()
+        .add_plugins((
+            CameraControlPlugin,
+            HudPlugin,
+            MapInteractionPlugin,
+            EntityCardsPlugin,
+        ))
+        // .insert_resource(HexGridConfig::new(50.0, 50, 50, 5.0))
+        // .add_systems(Startup, setup_sprite_res)
+        .add_systems(
+            Update,
+            (
+                minigame::core::systems::debug::debug_position_system,
+                // minigame::core::systems::movement::movement_system,
+                // minigame::core::systems::state_machine::state_machine_system,
+                close_window_on_esc,
+            ),
+        );
 
     app
 }

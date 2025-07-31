@@ -1,4 +1,5 @@
 use crate::core::systems::hex_grid::{HexCell, HexagonBorderMaterial};
+use crate::scenes::scene_selector::SceneSystemSet;
 use bevy::input::mouse::MouseButton;
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
@@ -241,6 +242,7 @@ impl Plugin for MapInteractionPlugin {
                         selected_effect_system,
                     ),
                 )
+                    .in_set(SceneSystemSet::GameSystems)
                     .chain(),
             );
     }

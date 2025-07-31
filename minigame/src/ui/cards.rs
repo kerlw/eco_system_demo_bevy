@@ -2,6 +2,8 @@ use bevy::color::palettes::css::*;
 use bevy::prelude::*;
 use bevy::ui::{PositionType, UiRect, Val};
 
+use crate::scenes::scene_selector::SceneSystemSet;
+
 /// 实体卡片组件
 #[derive(Component)]
 pub struct EntityCard;
@@ -19,15 +21,20 @@ pub struct EntityCardsPlugin;
 impl Plugin for EntityCardsPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<CardAssets>()
-            .add_systems(Startup, load_card_assets)
-            .add_systems(Update, (spawn_entity_card, update_entity_card).chain()); // 确保按顺序执行
+            .add_systems(
+                Startup,
+                load_card_assets.in_set(SceneSystemSet::GameSystems),
+            )
+            .add_systems(
+                Update,
+                (spawn_entity_card, update_entity_card)
+                    .in_set(SceneSystemSet::GameSystems)
+                    .chain(),
+            ); // 确保按顺序执行
     }
 }
 
-fn load_card_assets(
-    asset_server: Res<AssetServer>,
-    mut card_assets: ResMut<CardAssets>,
-) {
+fn load_card_assets(asset_server: Res<AssetServer>, mut card_assets: ResMut<CardAssets>) {
     card_assets.font = asset_server.load("fonts/msyh.ttc");
     card_assets.card_bg = asset_server.load("textures/card_bg.png");
 }
