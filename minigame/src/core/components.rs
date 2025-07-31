@@ -1,5 +1,7 @@
 //! 核心ECS组件定义
 
+use std::fmt;
+
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -21,6 +23,18 @@ pub enum EntityType {
     Rabbit,
     Fox,
     Animal(Species),
+}
+
+impl fmt::Display for EntityType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let s = match self {
+            EntityType::Grass => "Grass_normal",
+            EntityType::Rabbit => "Rabbit",
+            EntityType::Fox => "Fox",
+            EntityType::Animal(_) => "Animal",
+        };
+        write!(f, "{}", s)
+    }
 }
 
 /// 动物种类

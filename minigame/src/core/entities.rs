@@ -1,7 +1,6 @@
 use crate::{
     core::{HexGridConfig, components::EntityType, hex_grid::grid_to_world},
     level::{
-        self,
         config::{EntityConfig, LevelConfigAsset},
         loader::LevelLoader,
     },
@@ -74,11 +73,19 @@ pub fn spawn_entity(
     sprite_manager: &ResMut<SpriteManager>,
     hex_config: &Res<HexGridConfig>,
 ) {
+    let mut center = grid_to_world(config.pos.into(), hex_config.size);
+    center.z = 2.0;
+
+    info!(
+        "spawn {:?} at ({:?}, {:?})",
+        &config.entity_type, config.pos, center
+    );
+
     let mut cmd = commands.spawn((
-        sprite_manager.get_sprite_by_name("fox"),
-        Transform::from_translation(grid_to_world(config.pos.into(), hex_config)),
+        sprite_manager.get_sprite_by_name(config.entity_type.to_string().to_lowercase().as_str()),
+        Transform::from_translation(center),
     ));
-    match (config.entity_type) {
+    match config.entity_type {
         EntityType::Rabbit => {
             cmd.insert(Rabbit);
         }

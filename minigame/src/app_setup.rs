@@ -1,7 +1,6 @@
 //! 应用初始化和系统配置
 
 use bevy::input::common_conditions::input_just_pressed;
-use bevy::input::keyboard::KeyboardInput;
 use bevy::prelude::*;
 use bevy::sprite::Material2dPlugin;
 use bevy::window::PrimaryWindow;
@@ -29,7 +28,8 @@ fn close_window_on_esc(
                 window: window_entity,
             });
         }
-    } else { // 非主菜单界面时退到主菜单界面
+    } else {
+        // 非主菜单界面时退到主菜单界面
         game_state.set(GameState::MainMenu);
     }
 }

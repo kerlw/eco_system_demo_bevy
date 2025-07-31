@@ -1,7 +1,7 @@
 use bevy::{asset::AssetLoadFailedEvent, prelude::*};
 
 use crate::{
-    core::{GameState, render_grid_system, setup_grid},
+    core::{GameState, entities::spawn_entities_system, render_grid_system, setup_grid},
     level::{
         config::{LevelConfigAsset, LevelConfigAssetLoader},
         loader::load_level_system,
@@ -53,7 +53,13 @@ impl Plugin for SceneSelectorPlugin {
             )
             .add_systems(
                 OnEnter(GameState::Playing),
-                (setup_game_scene, setup_grid, render_grid_system).chain(),
+                (
+                    setup_game_scene,
+                    setup_grid,
+                    render_grid_system,
+                    spawn_entities_system,
+                )
+                    .chain(),
             )
             .add_systems(OnExit(GameState::Playing), despawn_scene);
     }

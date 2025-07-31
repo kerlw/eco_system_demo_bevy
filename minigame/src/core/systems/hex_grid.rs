@@ -22,7 +22,10 @@ impl Position {
 
 impl From<UVec2> for Position {
     fn from(pos: UVec2) -> Self {
-        Self { x: pos.x as i32, y: pos.y as i32 }
+        Self {
+            x: pos.x as i32,
+            y: pos.y as i32,
+        }
     }
 }
 
@@ -47,9 +50,9 @@ impl HexGridConfig {
 }
 
 /// 将网格坐标转换为世界坐标
-pub fn grid_to_world(pos: Position, config: &HexGridConfig) -> Vec3 {
-    let x = config.size * f32::sqrt(3.0) * (pos.x as f32 + 0.5 * (pos.y as f32 % 2.0));
-    let y = config.size * 1.5 * pos.y as f32;
+pub fn grid_to_world(pos: Position, hex_size: f32) -> Vec3 {
+    let x = hex_size * f32::sqrt(3.0) * (pos.x as f32 + 0.5 * (pos.y as f32 % 2.0));
+    let y = hex_size * 1.5 * pos.y as f32;
     Vec3::new(x, y, 0.0)
 }
 

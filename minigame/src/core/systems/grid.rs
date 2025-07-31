@@ -36,7 +36,7 @@ pub fn render_grid_system(
     for x in 0..config.width as i32 {
         for y in 0..config.height as i32 {
             let pos = Position { x, y };
-            let center = grid_to_world(pos, &config);
+            let center = grid_to_world(pos, config.size);
 
             grids.push((
                 Mesh2d(shared_mesh.0.clone()),

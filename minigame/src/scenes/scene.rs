@@ -1,7 +1,12 @@
 //! 场景系统实现
 
 use crate::{
-    core::{HexGridConfig, camera::CameraController, components::Player, hex_grid::Position},
+    core::{
+        HexGridConfig,
+        camera::CameraController,
+        components::Player,
+        hex_grid::{Position, grid_to_world},
+    },
     level::{config::LevelConfigAsset, loader::*},
 };
 use bevy::prelude::*;
@@ -17,12 +22,6 @@ pub fn setup_game_scene(
     // sprite_manager: ResMut<SpriteManager>,
 ) {
     info!("Setup game scene");
-    // 摄像机
-    commands.spawn((
-        GameSceneRoot,
-        Camera2d::default(),
-        CameraController::default(),
-    ));
 
     let cfg = level_data.get(&loader.level_data).unwrap();
     commands.insert_resource(HexGridConfig::new(
@@ -30,6 +29,16 @@ pub fn setup_game_scene(
         cfg.size.x as usize,
         cfg.size.y as usize,
         0.0,
+    ));
+
+    let center = grid_to_world(cfg.startup_camera_pos.unwrap_or_default().into(), 50.0);
+
+    // 摄像机
+    commands.spawn((
+        GameSceneRoot,
+        Camera2d::default(),
+        Transform::from_translation(center),
+        CameraController::default(),
     ));
 }
 
