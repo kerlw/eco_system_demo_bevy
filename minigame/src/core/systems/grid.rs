@@ -12,6 +12,7 @@ pub fn setup_grid(
     config: Res<HexGridConfig>,
     meshes: ResMut<Assets<Mesh>>,
 ) {
+    info!("here");
     let size = config.size;
     commands.spawn((
         Name::new("HexGrid"),
@@ -28,6 +29,7 @@ pub fn render_grid_system(
     shared_mesh: Res<SharedHexMesh>,
     mut materials: ResMut<Assets<HexagonBorderMaterial>>,
 ) {
+    info!("render hex grid {:?}", config.clone());
     let mut grids = vec![];
 
     // 构建所有地图格数组

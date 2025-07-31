@@ -1,7 +1,7 @@
-use bevy::{asset::AssetLoadFailedEvent, log::Level, prelude::*};
+use bevy::{asset::AssetLoadFailedEvent, prelude::*};
 
 use crate::{
-    core::GameState,
+    core::{GameState, render_grid_system, setup_grid},
     level::{
         config::{LevelConfigAsset, LevelConfigAssetLoader},
         loader::load_level_system,
@@ -20,14 +20,6 @@ pub enum SceneSystemSet {
 
 impl Plugin for SceneSelectorPlugin {
     fn build(&self, app: &mut App) {
-        app.configure_sets(
-            Startup,
-            SceneSystemSet::MenuSystems.run_if(in_state(GameState::MainMenu)),
-        )
-        .configure_sets(
-            Startup,
-            SceneSystemSet::GameSystems.run_if(in_state(GameState::Playing)),
-        );
         app.configure_sets(
             Update,
             SceneSystemSet::MenuSystems.run_if(in_state(GameState::MainMenu)),
@@ -50,7 +42,6 @@ impl Plugin for SceneSelectorPlugin {
             )
             .add_systems(OnExit(GameState::MainMenu), despawn_level_selection_ui)
             .add_systems(OnEnter(GameState::GameLoading), load_level_system)
-            .add_systems(OnEnter(GameState::Playing), setup_game_scene)
             .add_systems(
                 Update,
                 (
@@ -59,6 +50,11 @@ impl Plugin for SceneSelectorPlugin {
                         .run_if(on_event::<AssetLoadFailedEvent<LevelConfigAsset>>),
                 )
                     .in_set(SceneSystemSet::LoadingSystem),
-            );
+            )
+            .add_systems(
+                OnEnter(GameState::Playing),
+                (setup_game_scene, setup_grid, render_grid_system).chain(),
+            )
+            .add_systems(OnExit(GameState::Playing), despawn_scene);
     }
 }

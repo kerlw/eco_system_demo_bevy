@@ -112,7 +112,6 @@ pub fn setup_main_menu(mut commands: Commands, asset_server: Res<AssetServer>) {
                             }
                         }
                     }
-                    info!("here!");
                 });
         });
 }

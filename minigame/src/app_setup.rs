@@ -1,5 +1,7 @@
 //! 应用初始化和系统配置
 
+use bevy::input::common_conditions::input_just_pressed;
+use bevy::input::keyboard::KeyboardInput;
 use bevy::prelude::*;
 use bevy::sprite::Material2dPlugin;
 use bevy::window::PrimaryWindow;
@@ -16,19 +18,19 @@ use minigame::ui::hud::HudPlugin;
 
 fn close_window_on_esc(
     mut window_events: EventWriter<bevy::window::WindowCloseRequested>,
-    mut keyboard_events: EventReader<bevy::input::keyboard::KeyboardInput>,
     window: Query<Entity, With<PrimaryWindow>>,
+    state: Res<State<GameState>>,
+    mut game_state: ResMut<NextState<GameState>>,
 ) {
-    for event in keyboard_events.read() {
-        if event.key_code == KeyCode::Escape {
-            if event.state.is_pressed() {
-                if let Ok(window_entity) = window.single() {
-                    window_events.write(bevy::window::WindowCloseRequested {
-                        window: window_entity,
-                    });
-                }
-            }
+    // 主菜单界面时退出应用
+    if state.get().eq(&GameState::MainMenu) {
+        if let Ok(window_entity) = window.single() {
+            window_events.write(bevy::window::WindowCloseRequested {
+                window: window_entity,
+            });
         }
+    } else { // 非主菜单界面时退到主菜单界面
+        game_state.set(GameState::MainMenu);
     }
 }
 
@@ -55,7 +57,7 @@ pub fn create_app() -> App {
                 minigame::core::systems::debug::debug_position_system,
                 // minigame::core::systems::movement::movement_system,
                 // minigame::core::systems::state_machine::state_machine_system,
-                close_window_on_esc,
+                close_window_on_esc.run_if(input_just_pressed(KeyCode::Escape)),
             ),
         );
 

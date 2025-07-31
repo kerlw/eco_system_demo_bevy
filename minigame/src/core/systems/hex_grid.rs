@@ -20,8 +20,14 @@ impl Position {
     }
 }
 
+impl From<UVec2> for Position {
+    fn from(pos: UVec2) -> Self {
+        Self { x: pos.x as i32, y: pos.y as i32 }
+    }
+}
+
 /// 六边形网格配置
-#[derive(Resource, Clone)]
+#[derive(Debug, Resource, Clone)]
 pub struct HexGridConfig {
     pub size: f32,       // 六边形边长
     pub width: usize,    // 网格宽度(列数)

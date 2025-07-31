@@ -33,6 +33,7 @@ pub fn load_level_system(
         match load_state {
             Some(LoadState::Loaded) => {
                 info!("Loaded level {}", level_name);
+                game_state.set(GameState::Playing);
             }
             Some(LoadState::Failed(err)) => {
                 error!("Failed to load level {}: {:?}", level_name, err);
