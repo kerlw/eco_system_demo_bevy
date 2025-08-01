@@ -3,7 +3,7 @@ use bevy::render::render_resource::{AsBindGroup, ShaderRef};
 use bevy::sprite::Material2d;
 
 /// 六边形网格坐标
-#[derive(Component, Debug, Clone, Copy, PartialEq)]
+#[derive(Component, Debug, Default, Clone, Copy, PartialEq)]
 pub struct Position {
     pub x: i32,
     pub y: i32,
@@ -56,6 +56,10 @@ pub fn grid_to_world(pos: Position, hex_size: f32) -> Vec3 {
     Vec3::new(x, y, 0.0)
 }
 
+pub fn world_to_grid(pos: &Vec3, hex_size: f32) -> Position {
+    Position::default()
+}
+
 /// 计算两个六边形之间的距离
 pub fn hex_distance(a: Position, b: Position) -> i32 {
     let dx = b.x - a.x;
@@ -71,7 +75,7 @@ pub fn is_valid_position(pos: Position, config: &HexGridConfig) -> bool {
 /// 空间分区系统
 #[derive(Component)]
 pub struct SpatialPartition {
-    partitions: Vec<Vec<Entity>>,
+    partitions: Vec<Vec<Entity>>, //在此格内的实体
     config: HexGridConfig,
 }
 

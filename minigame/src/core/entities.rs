@@ -85,6 +85,7 @@ pub fn spawn_entity(
         sprite_manager.get_sprite_by_name(config.entity_type.to_string().to_lowercase().as_str()),
         Transform::from_translation(center),
     ));
+    cmd.id();
     match config.entity_type {
         EntityType::Rabbit => {
             cmd.insert(Rabbit);

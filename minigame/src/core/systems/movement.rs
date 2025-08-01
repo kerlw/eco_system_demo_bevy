@@ -1,12 +1,11 @@
 //! 实体移动系统实现
-use super::super::components::{EnergyStore, VisionRange, MoveTo};
+use super::super::components::{EnergyStore, MoveTo, VisionRange};
 use super::super::hex_grid::{HexGridConfig, Position, hex_distance, is_valid_position};
 use crate::core::state::GameState;
 use bevy::prelude::*;
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone, SystemSet)]
 pub enum MovementSystemSet {
-    Input,
     Pathfinding,
     Movement,
 }
@@ -14,11 +13,7 @@ pub enum MovementSystemSet {
 pub fn configure_movement_sets(app: &mut App) {
     app.configure_sets(
         Update,
-        (
-            MovementSystemSet::Input,
-            MovementSystemSet::Pathfinding,
-            MovementSystemSet::Movement,
-        )
+        (MovementSystemSet::Pathfinding, MovementSystemSet::Movement)
             .chain()
             .run_if(in_state(GameState::Playing)),
     );
@@ -28,46 +23,11 @@ pub fn register_movement_systems(app: &mut App) {
     app.add_systems(
         Update,
         (
-            keyboard_input_system.in_set(MovementSystemSet::Input),
             pathfinding_system.in_set(MovementSystemSet::Pathfinding),
             update_paths.in_set(MovementSystemSet::Movement),
             movement_system.in_set(MovementSystemSet::Movement),
         ),
     );
-}
-
-/// 键盘输入系统
-pub fn keyboard_input_system(
-    keyboard: Res<ButtonInput<KeyCode>>,
-    mut query: Query<(&Position, &mut MoveTo)>,
-    config: Res<HexGridConfig>,
-) {
-    if query.is_empty() {
-        return;
-    }
-
-    let Ok((current_pos, mut move_to)) = query.single_mut() else {
-        return;
-    };
-    let mut new_target = *current_pos;
-
-    if keyboard.pressed(KeyCode::ArrowUp) {
-        new_target.y += 1;
-    }
-    if keyboard.pressed(KeyCode::ArrowDown) {
-        new_target.y -= 1;
-    }
-    if keyboard.pressed(KeyCode::ArrowLeft) {
-        new_target.x -= 1;
-    }
-    if keyboard.pressed(KeyCode::ArrowRight) {
-        new_target.x += 1;
-    }
-
-    if is_valid_position(new_target, &config) && new_target != *current_pos {
-        move_to.target = new_target;
-        move_to.path.clear();
-    }
 }
 
 /// 寻路系统
@@ -102,7 +62,13 @@ pub fn update_paths(query: Query<(&Position, &MoveTo), Changed<Position>>) {
 #[allow(unused_variables)]
 pub fn movement_system(
     mut commands: Commands,
-    mut query: Query<(Entity, &mut Position, &mut MoveTo, Option<&mut EnergyStore>, Option<&VisionRange>)>,
+    mut query: Query<(
+        Entity,
+        &mut Position,
+        &mut MoveTo,
+        Option<&mut EnergyStore>,
+        Option<&VisionRange>,
+    )>,
     time: Res<Time>,
     config: Res<HexGridConfig>,
 ) {

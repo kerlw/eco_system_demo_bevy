@@ -37,6 +37,12 @@ pub fn setup_game_scene(
     commands.spawn((
         GameSceneRoot,
         Camera2d::default(),
+        Camera {
+            hdr: true,
+            ..default()
+        },
+        bevy::core_pipeline::tonemapping::Tonemapping::TonyMcMapface,
+        bevy::core_pipeline::bloom::Bloom::default(),
         Transform::from_translation(center),
         CameraController::default(),
     ));

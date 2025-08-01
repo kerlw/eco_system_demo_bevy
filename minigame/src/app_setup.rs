@@ -5,6 +5,9 @@ use bevy::prelude::*;
 use bevy::sprite::Material2dPlugin;
 use bevy::window::PrimaryWindow;
 use bevy::winit::WinitSettings;
+use bevy_screen_diagnostics::{
+    ScreenDiagnosticsPlugin, ScreenEntityDiagnosticsPlugin, ScreenFrameDiagnosticsPlugin,
+};
 use minigame::core::camera::CameraControlPlugin;
 use minigame::core::interaction::MapInteractionPlugin;
 use minigame::core::state::GameState;
@@ -40,6 +43,9 @@ pub fn create_app() -> App {
     app.add_plugins(DefaultPlugins)
         .insert_resource(WinitSettings::desktop_app())
         .add_plugins(Material2dPlugin::<HexagonBorderMaterial>::default())
+        .add_plugins(ScreenDiagnosticsPlugin::default())
+        .add_plugins(ScreenFrameDiagnosticsPlugin)
+        .add_plugins(ScreenEntityDiagnosticsPlugin)
         .insert_resource(LevelLoader::default())
         .add_plugins((SpriteManagerPlugin, SceneSelectorPlugin))
         .init_state::<GameState>()
