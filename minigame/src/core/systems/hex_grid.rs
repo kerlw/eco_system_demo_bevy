@@ -56,7 +56,7 @@ pub fn grid_to_world(pos: Position, hex_size: f32) -> Vec3 {
     Vec3::new(x, y, 0.0)
 }
 
-pub fn world_to_grid(pos: &Vec3, hex_size: f32) -> Position {
+pub fn world_to_grid(_pos: &Vec3, _hex_size: f32) -> Position {
     Position::default()
 }
 
@@ -73,10 +73,10 @@ pub fn is_valid_position(pos: Position, config: &HexGridConfig) -> bool {
 }
 
 /// 空间分区系统
-#[derive(Component)]
+#[derive(Debug, Resource)]
 pub struct SpatialPartition {
-    partitions: Vec<Vec<Entity>>, //在此格内的实体
-    config: HexGridConfig,
+    pub partitions: Vec<Vec<Entity>>, //在此格内的实体
+    pub config: HexGridConfig,
 }
 
 impl SpatialPartition {

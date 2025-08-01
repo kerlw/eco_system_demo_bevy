@@ -46,6 +46,8 @@ pub fn create_app() -> App {
         .add_plugins(ScreenDiagnosticsPlugin::default())
         .add_plugins(ScreenFrameDiagnosticsPlugin)
         .add_plugins(ScreenEntityDiagnosticsPlugin)
+        .add_plugins(bevy_egui::EguiPlugin::default())
+        // .add_plugins(VisibilityPlugin)  //提示已经加载这个插件了，目前还不知道是哪个插件包含了这个
         .insert_resource(LevelLoader::default())
         .add_plugins((SpriteManagerPlugin, SceneSelectorPlugin))
         .init_state::<GameState>()

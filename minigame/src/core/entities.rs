@@ -4,9 +4,13 @@ use crate::{
         config::{EntityConfig, LevelConfigAsset},
         loader::LevelLoader,
     },
+    scenes::GameSceneRoot,
     sprite::sprite_mgr::SpriteManager,
 };
 use bevy::prelude::*;
+
+#[derive(Component)]
+pub struct OnMapEntitiesRoot;
 
 /// 基础实体组件
 #[derive(Component)]
@@ -72,7 +76,13 @@ pub fn spawn_entity(
     config: &EntityConfig,
     sprite_manager: &ResMut<SpriteManager>,
     hex_config: &Res<HexGridConfig>,
+    root: &Entity,
 ) {
+    let parent = commands
+        .spawn((OnMapEntitiesRoot, Transform::from_xyz(0.0, 0.0, 2.0)))
+        .insert(ChildOf(*root))
+        .id();
+
     let mut center = grid_to_world(config.pos.into(), hex_config.size);
     center.z = 2.0;
 
@@ -85,7 +95,7 @@ pub fn spawn_entity(
         sprite_manager.get_sprite_by_name(config.entity_type.to_string().to_lowercase().as_str()),
         Transform::from_translation(center),
     ));
-    cmd.id();
+
     match config.entity_type {
         EntityType::Rabbit => {
             cmd.insert(Rabbit);
@@ -95,6 +105,8 @@ pub fn spawn_entity(
         }
         _ => {}
     };
+
+    cmd.insert(ChildOf(parent));
 
     // // 添加基础组件
     // entity.insert_bundle((
@@ -159,9 +171,16 @@ pub fn spawn_entities_system(
     level_data: Res<Assets<LevelConfigAsset>>,
     sprite_manager: ResMut<SpriteManager>,
     hex_config: Res<HexGridConfig>,
+    root: Query<Entity, With<GameSceneRoot>>,
 ) {
     let level_config = level_data.get(&level_loader.level_data).unwrap();
     for cfg in level_config.entities.iter() {
-        spawn_entity(&mut commands, cfg, &sprite_manager, &hex_config);
+        spawn_entity(
+            &mut commands,
+            cfg,
+            &sprite_manager,
+            &hex_config,
+            &root.single().unwrap(),
+        );
     }
 }
