@@ -41,7 +41,7 @@ pub fn render_grid_system(
     // 构建所有地图格数组
     for x in 0..partition.config.width as i32 {
         for y in 0..partition.config.height as i32 {
-            let pos = Position::new(x, y);
+            let pos = HexMapPosition::new(x, y);
             let center = grid_to_world(pos, partition.config.size);
 
             // grids.push((
@@ -54,7 +54,7 @@ pub fn render_grid_system(
                         border_color: WHITE.into(),
                         border_width: 0.05,
                     })),
-                    HexCell { hex: (x, y).into() },
+                    pos,
                 ))
                 .insert(ChildOf(parent))
                 .id();

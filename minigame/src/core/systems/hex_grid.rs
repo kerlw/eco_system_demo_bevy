@@ -2,9 +2,9 @@ use bevy::prelude::*;
 use bevy::render::render_resource::{AsBindGroup, ShaderRef};
 use bevy::sprite::Material2d;
 
-/// 六边形网格坐标
+/// 六边形网格坐标, x,y为奇行偏移坐标，q,r,s为立方体坐标
 #[derive(Component, Debug, Default, Clone, Copy, PartialEq)]
-pub struct Position {
+pub struct HexMapPosition {
     pub x: i32,
     pub y: i32,
     pub q: i32,
@@ -12,7 +12,7 @@ pub struct Position {
     pub s: i32,
 }
 
-impl Position {
+impl HexMapPosition {
     pub fn new(x: i32, y: i32) -> Self {
         let q = x - (y - (y & 1)) / 2; // 奇行偏移修正
         let r = y;
@@ -33,7 +33,7 @@ impl Position {
         IVec3::new(self.q, self.r, self.s)
     }
 
-    pub fn move_towards(&mut self, target: &Position, speed: f32, _config: &HexGridConfig) {
+    pub fn move_towards(&mut self, target: &HexMapPosition, speed: f32, _config: &HexGridConfig) {
         // 基于六边形网格的移动逻辑
         let dx = (target.x - self.x).clamp(-1, 1);
         let dy = (target.y - self.y).clamp(-1, 1);
@@ -43,7 +43,7 @@ impl Position {
     }
 }
 
-impl From<IVec2> for Position {
+impl From<IVec2> for HexMapPosition {
     fn from(pos: IVec2) -> Self {
         let q = pos.x - (pos.y - (pos.y & 1)) / 2; // 奇行偏移修正
         let r = pos.y;
@@ -78,25 +78,25 @@ impl HexGridConfig {
 }
 
 /// 将网格坐标转换为世界坐标
-pub fn grid_to_world(pos: Position, hex_size: f32) -> Vec3 {
+pub fn grid_to_world(pos: HexMapPosition, hex_size: f32) -> Vec3 {
     let x = hex_size * f32::sqrt(3.0) * (pos.x as f32 + 0.5 * (pos.y as f32 % 2.0));
     let y = hex_size * 1.5 * pos.y as f32;
     Vec3::new(x, y, 0.0)
 }
 
-pub fn world_to_grid(_pos: &Vec3, _hex_size: f32) -> Position {
-    Position::default()
+pub fn world_to_grid(_pos: &Vec3, _hex_size: f32) -> HexMapPosition {
+    HexMapPosition::default()
 }
 
 /// 计算两个六边形之间的距离
-pub fn hex_distance(a: Position, b: Position) -> i32 {
+pub fn hex_distance(a: HexMapPosition, b: HexMapPosition) -> i32 {
     let dx = b.x - a.x;
     let dy = b.y - a.y;
     (dx.abs() + (dx + dy).abs() + dy.abs()) / 2
 }
 
 /// 检查位置是否在网格范围内
-pub fn is_valid_position(pos: Position, config: &HexGridConfig) -> bool {
+pub fn is_valid_position(pos: HexMapPosition, config: &HexGridConfig) -> bool {
     pos.x >= 0 && pos.x < config.width as i32 && pos.y >= 0 && pos.y < config.height as i32
 }
 
@@ -117,24 +117,25 @@ impl SpatialPartition {
     }
 
     /// 获取分区索引
-    fn get_index(&self, pos: Position) -> usize {
+    fn get_index(&self, pos: HexMapPosition) -> usize {
         (pos.y as usize * self.config.width) + pos.x as usize
     }
 
     /// 添加实体到分区
-    pub fn insert(&mut self, entity: Entity, pos: Position) {
+    pub fn insert(&mut self, entity: Entity, pos: HexMapPosition) {
         let index = self.get_index(pos);
         self.partitions[index].push(entity);
     }
 
     /// 查询附近实体
-    pub fn query(&self, center: Position, radius: i32) -> Vec<Entity> {
+    pub fn query(&self, center: HexMapPosition, radius: i32) -> Vec<Entity> {
         let mut results = Vec::new();
 
         for dy in -radius..=radius {
             for dx in -radius..=radius {
-                if hex_distance(center, Position::new(center.x + dx, center.y + dy)) <= radius {
-                    let pos = Position::new(center.x + dx, center.y + dy);
+                if hex_distance(center, HexMapPosition::new(center.x + dx, center.y + dy)) <= radius
+                {
+                    let pos = HexMapPosition::new(center.x + dx, center.y + dy);
                     if pos.x >= 0
                         && pos.x < self.config.width as i32
                         && pos.y >= 0
@@ -151,11 +152,11 @@ impl SpatialPartition {
     }
 }
 
-/// 六边形网格单元组件
-#[derive(Component)]
-pub struct HexCell {
-    pub hex: HexCoord,
-}
+// /// 六边形网格单元组件
+// #[derive(Component)]
+// pub struct HexCell {
+//     pub hex: HexCoord,
+// }
 
 // 自定义边框着色器
 #[derive(AsBindGroup, Debug, Clone, Asset, TypePath)]
@@ -212,8 +213,8 @@ mod tests {
 
     #[test]
     fn test_hex_distance() {
-        let a = Position::new(0, 0);
-        let b = Position::new(3, 2);
+        let a = HexMapPosition::new(0, 0);
+        let b = HexMapPosition::new(3, 2);
         assert_eq!(hex_distance(a, b), 3);
     }
 
@@ -228,8 +229,8 @@ mod tests {
         let mut partition = SpatialPartition::new(config);
         let entity = Entity::from_raw(0);
 
-        partition.insert(entity, Position::new(5, 5));
-        let results = partition.query(Position::new(5, 5), 2);
+        partition.insert(entity, HexMapPosition::new(5, 5));
+        let results = partition.query(HexMapPosition::new(5, 5), 2);
 
         assert!(results.contains(&entity));
     }

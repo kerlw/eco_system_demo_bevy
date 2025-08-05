@@ -5,7 +5,7 @@ use std::fmt;
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::core::systems::hex_grid::Position;
+use crate::core::systems::hex_grid::HexMapPosition;
 
 /// 渲染信息
 #[derive(Component)]
@@ -73,8 +73,8 @@ pub struct Player;
 /// 移动目标
 #[derive(Component, Debug)]
 pub struct MoveTo {
-    pub target: Position,
-    pub path: Vec<Position>,
+    pub target: HexMapPosition,
+    pub path: Vec<HexMapPosition>,
     pub speed: f32,
 }
 

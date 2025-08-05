@@ -1,4 +1,4 @@
-use crate::core::systems::hex_grid::{HexCell, HexagonBorderMaterial};
+use crate::core::systems::hex_grid::{HexMapPosition, HexagonBorderMaterial};
 use crate::scenes::scene_selector::SceneSystemSet;
 use bevy::input::mouse::MouseButton;
 use bevy::prelude::*;
@@ -105,7 +105,7 @@ pub fn hex_click_system(
     interaction: Res<HexInteraction>,
     mouse: Res<ButtonInput<MouseButton>>,
     mouse_position: Res<GlobalMousePosition>,
-    query: Query<(Entity, &Transform, &HexCell)>,
+    query: Query<(Entity, &Transform, &HexMapPosition)>,
     mut commands: Commands,
 ) {
     if !mouse.just_pressed(MouseButton::Left) {
@@ -141,7 +141,10 @@ pub fn hex_hover_system(
     interaction: Res<HexInteraction>,
     mouse_position: Res<GlobalMousePosition>,
     camera_q: Query<(&Camera, &GlobalTransform)>,
-    mut query: Query<(Entity, &Transform, &MeshMaterial2d<HexagonBorderMaterial>), With<HexCell>>,
+    mut query: Query<
+        (Entity, &Transform, &MeshMaterial2d<HexagonBorderMaterial>),
+        With<HexMapPosition>,
+    >,
     colors: Res<HexColors>,
     mut materials: ResMut<Assets<HexagonBorderMaterial>>,
 ) {

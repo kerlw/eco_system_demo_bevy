@@ -5,7 +5,7 @@ use crate::{
         HexGridConfig,
         camera::CameraController,
         components::Player,
-        hex_grid::{Position, grid_to_world},
+        hex_grid::{HexMapPosition, grid_to_world},
     },
     level::{config::LevelConfigAsset, loader::*},
 };
@@ -53,7 +53,7 @@ pub fn setup_game_scene(
 
 /// 生成玩家实体
 pub fn spawn_player(mut commands: Commands) {
-    commands.spawn((Position::new(0, 0), Player));
+    commands.spawn((HexMapPosition::new(0, 0), Player));
 }
 
 pub fn despawn_scene(mut commands: Commands, query: Query<Entity, With<GameSceneRoot>>) {

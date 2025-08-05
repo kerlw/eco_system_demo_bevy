@@ -1,12 +1,12 @@
 //! 调试系统实现
 
 use super::super::components::EntityType;
-use super::hex_grid::Position;
+use super::hex_grid::HexMapPosition;
 use bevy::prelude::*;
 
 /// 调试位置输出系统
 pub fn debug_position_system(
-    query: Query<(&Position, &EntityType)>,
+    query: Query<(&HexMapPosition, &EntityType)>,
     keyboard: Res<ButtonInput<KeyCode>>,
 ) {
     if keyboard.just_pressed(KeyCode::Space) {

@@ -1,6 +1,6 @@
 //! 实体移动系统实现
 use super::super::components::{EnergyStore, MoveTo, VisionRange};
-use super::super::hex_grid::{HexGridConfig, Position, hex_distance, is_valid_position};
+use super::super::hex_grid::{HexGridConfig, HexMapPosition, hex_distance, is_valid_position};
 use crate::core::state::GameState;
 use bevy::prelude::*;
 
@@ -32,7 +32,7 @@ pub fn register_movement_systems(app: &mut App) {
 
 /// 寻路系统
 pub fn pathfinding_system(
-    mut query: Query<(&Position, &mut MoveTo, Option<&VisionRange>)>,
+    mut query: Query<(&HexMapPosition, &mut MoveTo, Option<&VisionRange>)>,
     _config: Res<HexGridConfig>,
 ) {
     for (current_pos, mut move_to, vision_range) in &mut query {
@@ -51,7 +51,7 @@ pub fn pathfinding_system(
 }
 
 /// 路径更新系统
-pub fn update_paths(query: Query<(&Position, &MoveTo), Changed<Position>>) {
+pub fn update_paths(query: Query<(&HexMapPosition, &MoveTo), Changed<HexMapPosition>>) {
     for (_position, _move_to) in query.iter() {
         // 路径更新逻辑
         // 当位置变化时更新路径
@@ -64,7 +64,7 @@ pub fn movement_system(
     mut commands: Commands,
     mut query: Query<(
         Entity,
-        &mut Position,
+        &mut HexMapPosition,
         &mut MoveTo,
         Option<&mut EnergyStore>,
         Option<&VisionRange>,
