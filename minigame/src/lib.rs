@@ -3,6 +3,7 @@ pub mod level;
 pub mod ui;
 pub mod sprite;
 pub mod scenes;
+pub mod ai;
 
 #[cfg(test)]
 mod tests {

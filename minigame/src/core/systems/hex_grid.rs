@@ -7,9 +7,32 @@ use bevy::sprite::Material2d;
 pub struct Position {
     pub x: i32,
     pub y: i32,
+    pub q: i32,
+    pub r: i32,
+    pub s: i32,
 }
 
 impl Position {
+    pub fn new(x: i32, y: i32) -> Self {
+        let q = x - (y - (y & 1)) / 2; // 奇行偏移修正
+        let r = y;
+        Self {
+            x,
+            y,
+            q,
+            r,
+            s: -q - r,
+        }
+    }
+
+    pub fn to_vec2(&self) -> IVec2 {
+        IVec2::new(self.x, self.y)
+    }
+
+    pub fn cube_coord(&self) -> IVec3 {
+        IVec3::new(self.q, self.r, self.s)
+    }
+
     pub fn move_towards(&mut self, target: &Position, speed: f32, _config: &HexGridConfig) {
         // 基于六边形网格的移动逻辑
         let dx = (target.x - self.x).clamp(-1, 1);
@@ -20,11 +43,16 @@ impl Position {
     }
 }
 
-impl From<UVec2> for Position {
-    fn from(pos: UVec2) -> Self {
+impl From<IVec2> for Position {
+    fn from(pos: IVec2) -> Self {
+        let q = pos.x - (pos.y - (pos.y & 1)) / 2; // 奇行偏移修正
+        let r = pos.y;
         Self {
             x: pos.x as i32,
             y: pos.y as i32,
+            q,
+            r,
+            s: -q - r,
         }
     }
 }
@@ -105,18 +133,8 @@ impl SpatialPartition {
 
         for dy in -radius..=radius {
             for dx in -radius..=radius {
-                if hex_distance(
-                    center,
-                    Position {
-                        x: center.x + dx,
-                        y: center.y + dy,
-                    },
-                ) <= radius
-                {
-                    let pos = Position {
-                        x: center.x + dx,
-                        y: center.y + dy,
-                    };
+                if hex_distance(center, Position::new(center.x + dx, center.y + dy)) <= radius {
+                    let pos = Position::new(center.x + dx, center.y + dy);
                     if pos.x >= 0
                         && pos.x < self.config.width as i32
                         && pos.y >= 0
@@ -194,8 +212,8 @@ mod tests {
 
     #[test]
     fn test_hex_distance() {
-        let a = Position { x: 0, y: 0 };
-        let b = Position { x: 3, y: 2 };
+        let a = Position::new(0, 0);
+        let b = Position::new(3, 2);
         assert_eq!(hex_distance(a, b), 3);
     }
 
@@ -210,8 +228,8 @@ mod tests {
         let mut partition = SpatialPartition::new(config);
         let entity = Entity::from_raw(0);
 
-        partition.insert(entity, Position { x: 5, y: 5 });
-        let results = partition.query(Position { x: 5, y: 5 }, 2);
+        partition.insert(entity, Position::new(5, 5));
+        let results = partition.query(Position::new(5, 5), 2);
 
         assert!(results.contains(&entity));
     }

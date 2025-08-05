@@ -15,10 +15,11 @@ pub struct Render {
 }
 
 /// 实体类型标记
-#[derive(Component, Debug, Deserialize, Serialize, Clone)]
+#[derive(Component, Debug, Deserialize, Serialize, Clone, Default)]
 #[serde(rename_all = "lowercase")]
 #[serde(tag = "type", content = "species")]
 pub enum EntityType {
+    #[default]
     Grass,
     Rabbit,
     Fox,

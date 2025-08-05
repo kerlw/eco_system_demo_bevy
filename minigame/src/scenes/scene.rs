@@ -53,7 +53,7 @@ pub fn setup_game_scene(
 
 /// 生成玩家实体
 pub fn spawn_player(mut commands: Commands) {
-    commands.spawn((Position { x: 0, y: 0 }, Player));
+    commands.spawn((Position::new(0, 0), Player));
 }
 
 pub fn despawn_scene(mut commands: Commands, query: Query<Entity, With<GameSceneRoot>>) {

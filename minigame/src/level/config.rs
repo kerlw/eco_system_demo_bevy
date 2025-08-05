@@ -11,7 +11,7 @@ use thiserror::Error;
 pub struct LevelConfigAsset {
     pub name: String,
     pub size: UVec2,
-    pub startup_camera_pos: Option<UVec2>, // 初始相机位置，可选项
+    pub startup_camera_pos: Option<IVec2>, // 初始相机位置，可选项
     pub entities: Vec<EntityConfig>,
 }
 
@@ -35,7 +35,7 @@ pub enum LevelConfigAssetLoaderError {
 pub struct EntityConfig {
     #[serde(rename = "type")]
     pub entity_type: EntityType,
-    pub pos: UVec2,
+    pub pos: IVec2,
     pub health: Option<f32>,
     pub reproduction_rate: Option<f32>,
     pub growth_rate: Option<f32>,
@@ -74,7 +74,7 @@ mod tests {
     fn ron_ser() {
         let entity = EntityConfig {
             entity_type: EntityType::Grass,
-            pos: UVec2::new(1, 1),
+            pos: IVec2::new(1, 1),
             health: None,
             reproduction_rate: None,
             growth_rate: None,
@@ -85,7 +85,7 @@ mod tests {
         let cfg = LevelConfigAsset {
             name: String::from("test"),
             size: UVec2::new(1, 1),
-            startup_camera_pos: Some(UVec2 { x: 2, y: 2 }),
+            startup_camera_pos: Some(IVec2 { x: 2, y: 2 }),
             entities: vec![entity.clone()],
         }; 
         println!("序列化字符串: {}", ron::ser::to_string(&cfg).unwrap());

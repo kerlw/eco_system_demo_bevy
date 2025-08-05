@@ -1,4 +1,5 @@
 use crate::{
+    ai::get_ai_behave_tree,
     core::{HexGridConfig, components::EntityType, hex_grid::grid_to_world},
     level::{
         config::{EntityConfig, LevelConfigAsset},
@@ -7,7 +8,8 @@ use crate::{
     scenes::GameSceneRoot,
     sprite::sprite_mgr::SpriteManager,
 };
-use bevy::prelude::*;
+use bevy::{color::palettes::css::WHITE, prelude::*};
+use bevy_behave::prelude::BehaveTree;
 
 #[derive(Component)]
 pub struct OnMapEntitiesRoot;
@@ -35,6 +37,7 @@ pub struct Reproduction {
 
 /// 草组件
 #[derive(Component)]
+#[require(Visibility)]
 pub struct Grass {
     pub growth_rate: f32,
     pub spread_range: i32,
@@ -51,10 +54,12 @@ pub struct Animal {
 
 /// 兔子特有组件
 #[derive(Component)]
+#[require(Visibility)]
 pub struct Rabbit;
 
 /// 狐狸特有组件
 #[derive(Component)]
+#[require(Visibility)]
 pub struct Fox;
 
 /// 实体生成配置
@@ -96,9 +101,29 @@ pub fn spawn_entity(
         Transform::from_translation(center),
     ));
 
+    // 以下代码给精灵添加头顶ui，但更新ui可能存在性能问题，后面再研究
+    // children![(
+    //         Sprite::from_color(Color::srgb(0.25, 0.25, 0.55), Vec2::new(100.0, 30.0)),
+    //         Transform::from_translation(Vec3::Y * 50.0 + Vec3::Z * 3.0),
+    //         children![(
+    //             Text2d::new("animal_ui"),
+    //             TextLayout::new(JustifyText::Left, LineBreak::AnyCharacter),
+    //             // Wrap text in the rectangle
+    //             TextBounds::from(Vec2::new(100.0, 30.0)),
+    //             TextFont {
+    //                 font_size: 16.0,
+    //                 ..Default::default()
+    //             },
+    //             TextColor(WHITE.into()),
+    //         )],
+    //     )],
+
     match config.entity_type {
         EntityType::Rabbit => {
-            cmd.insert(Rabbit);
+            cmd.insert((
+                Rabbit,
+                BehaveTree::new(get_ai_behave_tree(EntityType::Rabbit)),
+            ));
         }
         EntityType::Fox => {
             cmd.insert(Fox);

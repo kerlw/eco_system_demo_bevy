@@ -1,6 +1,7 @@
 use bevy::{asset::AssetLoadFailedEvent, prelude::*};
 
 use crate::{
+    ai::*,
     core::{GameState, entities::spawn_entities_system, render_grid_system, setup_grid},
     level::{
         config::{LevelConfigAsset, LevelConfigAssetLoader},
@@ -30,6 +31,10 @@ impl Plugin for SceneSelectorPlugin {
         )
         .configure_sets(
             Update,
+            SceneSystemSet::GameSystems.run_if(in_state(GameState::Playing)),
+        )
+        .configure_sets(
+            FixedUpdate,
             SceneSystemSet::GameSystems.run_if(in_state(GameState::Playing)),
         );
 
@@ -61,6 +66,12 @@ impl Plugin for SceneSelectorPlugin {
                 )
                     .chain(),
             )
+            //以下是AI控制部分的系统注册
+            .add_systems(
+                FixedUpdate,
+                idle_action_system.in_set(SceneSystemSet::GameSystems),
+            )
+            // 退出Playing状态的系统注册
             .add_systems(OnExit(GameState::Playing), despawn_scene);
     }
 }
