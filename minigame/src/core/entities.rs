@@ -1,6 +1,10 @@
 use crate::{
-    ai::get_ai_behave_tree,
-    core::{HexGridConfig, components::EntityType, hex_grid::grid_to_world},
+    ai::{AnimalActorBoard, get_ai_behave_tree},
+    core::{
+        HexGridConfig,
+        components::EntityType,
+        hex_grid::{HexMapPosition, SpatialPartition},
+    },
     level::{
         config::{EntityConfig, LevelConfigAsset},
         loader::LevelLoader,
@@ -12,6 +16,7 @@ use bevy::{color::palettes::css::WHITE, prelude::*};
 use bevy_behave::prelude::BehaveTree;
 
 #[derive(Component)]
+#[require(Visibility::default())]
 pub struct OnMapEntitiesRoot;
 
 /// 基础实体组件
@@ -35,32 +40,32 @@ pub struct Reproduction {
     pub cooldown: f32,
 }
 
-/// 草组件
-#[derive(Component)]
-#[require(Visibility)]
-pub struct Grass {
-    pub growth_rate: f32,
-    pub spread_range: i32,
-}
+// /// 草组件
+// #[derive(Component)]
+// #[require(Visibility)]
+// pub struct Grass {
+//     pub growth_rate: f32,
+//     pub spread_range: i32,
+// }
 
-/// 动物基础组件
-#[derive(Component)]
-pub struct Animal {
-    pub hunger: f32,
-    pub hunger_rate: f32,
-    pub vision_range: i32,
-    pub speed: f32,
-}
+// /// 动物基础组件
+// #[derive(Component)]
+// pub struct Animal {
+//     pub hunger: f32,
+//     pub hunger_rate: f32,
+//     pub vision_range: i32,
+//     pub speed: f32,
+// }
 
-/// 兔子特有组件
-#[derive(Component)]
-#[require(Visibility)]
-pub struct Rabbit;
+// /// 兔子特有组件
+// #[derive(Component)]
+// #[require(Visibility)]
+// pub struct Rabbit;
 
-/// 狐狸特有组件
-#[derive(Component)]
-#[require(Visibility)]
-pub struct Fox;
+// /// 狐狸特有组件
+// #[derive(Component)]
+// #[require(Visibility)]
+// pub struct Fox;
 
 /// 实体生成配置
 // pub struct EntityConfig {
@@ -80,7 +85,7 @@ pub fn spawn_entity(
     commands: &mut Commands,
     config: &EntityConfig,
     sprite_manager: &ResMut<SpriteManager>,
-    hex_config: &Res<HexGridConfig>,
+    partition: &mut ResMut<SpatialPartition>,
     root: &Entity,
 ) {
     let parent = commands
@@ -88,7 +93,7 @@ pub fn spawn_entity(
         .insert(ChildOf(*root))
         .id();
 
-    let mut center = grid_to_world(config.pos.into(), hex_config.size);
+    let mut center = partition.grid_to_world(&config.pos);
     center.z = 2.0;
 
     info!(
@@ -120,18 +125,30 @@ pub fn spawn_entity(
 
     match config.entity_type {
         EntityType::Rabbit => {
+            // info!("spawn rabbit behave tree");
             cmd.insert((
-                Rabbit,
-                BehaveTree::new(get_ai_behave_tree(EntityType::Rabbit)),
+                AnimalActorBoard {
+                    current_pos: config.pos,
+                    move_cd_timer: Timer::from_seconds(1.0, TimerMode::Repeating),
+                    entity_type: EntityType::Rabbit,
+                    satiety: 100,
+                    ..Default::default()
+                },
+                children![(
+                    Name::new("rabbit behave_tree"),
+                    BehaveTree::new(get_ai_behave_tree(EntityType::Rabbit)).with_logging(true),
+                )],
             ));
         }
         EntityType::Fox => {
-            cmd.insert(Fox);
+            // cmd.insert(Fox);
         }
         _ => {}
     };
 
     cmd.insert(ChildOf(parent));
+
+    partition.insert(cmd.id(), config.pos.into());
 
     // // 添加基础组件
     // entity.insert_bundle((
@@ -195,7 +212,7 @@ pub fn spawn_entities_system(
     level_loader: Res<LevelLoader>,
     level_data: Res<Assets<LevelConfigAsset>>,
     sprite_manager: ResMut<SpriteManager>,
-    hex_config: Res<HexGridConfig>,
+    mut partition: ResMut<SpatialPartition>,
     root: Query<Entity, With<GameSceneRoot>>,
 ) {
     let level_config = level_data.get(&level_loader.level_data).unwrap();
@@ -204,7 +221,7 @@ pub fn spawn_entities_system(
             &mut commands,
             cfg,
             &sprite_manager,
-            &hex_config,
+            &mut partition,
             &root.single().unwrap(),
         );
     }

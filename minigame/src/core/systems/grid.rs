@@ -18,7 +18,6 @@ pub fn setup_grid(
     meshes: ResMut<Assets<Mesh>>,
 ) {
     let size = config.size;
-    commands.insert_resource(SpatialPartition::new(config.into_inner().clone()));
     commands.insert_resource(SharedHexMesh(create_hex_mesh(meshes, size)));
 }
 
@@ -42,7 +41,7 @@ pub fn render_grid_system(
     for x in 0..partition.config.width as i32 {
         for y in 0..partition.config.height as i32 {
             let pos = HexMapPosition::new(x, y);
-            let center = grid_to_world(pos, partition.config.size);
+            let center = partition.grid_to_world(&pos.to_vec2());
 
             // grids.push((
             let cell = commands

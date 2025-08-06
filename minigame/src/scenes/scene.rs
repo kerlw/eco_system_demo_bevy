@@ -5,13 +5,14 @@ use crate::{
         HexGridConfig,
         camera::CameraController,
         components::Player,
-        hex_grid::{HexMapPosition, grid_to_world},
+        hex_grid::{HexMapPosition, SpatialPartition},
     },
     level::{config::LevelConfigAsset, loader::*},
 };
 use bevy::prelude::*;
 
 #[derive(Component)]
+#[require(Visibility::default())]
 pub struct GameSceneRoot;
 
 /// 初始化测试场景
@@ -24,14 +25,12 @@ pub fn setup_game_scene(
     info!("Setup game scene");
 
     let cfg = level_data.get(&loader.level_data).unwrap();
-    commands.insert_resource(HexGridConfig::new(
-        50.0,
-        cfg.size.x as usize,
-        cfg.size.y as usize,
-        0.0,
-    ));
+    let config = HexGridConfig::new(50.0, cfg.size.x as usize, cfg.size.y as usize, 0.0);
+    let partition = SpatialPartition::new(config.clone());
+    let center = partition.grid_to_world(&cfg.startup_camera_pos.unwrap_or_default());
 
-    let center = grid_to_world(cfg.startup_camera_pos.unwrap_or_default().into(), 50.0);
+    commands.insert_resource(config);
+    commands.insert_resource(partition);
 
     // 摄像机
     commands.spawn((

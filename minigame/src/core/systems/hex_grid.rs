@@ -33,6 +33,15 @@ impl HexMapPosition {
         IVec3::new(self.q, self.r, self.s)
     }
 
+    pub fn add_cube_coord(&mut self, coord: &IVec3) -> HexMapPosition {
+        self.q += coord.x;
+        self.r += coord.y;
+        self.s += coord.z;
+        self.x = self.q + (self.r - (self.r & 1)) / 2;
+        self.y = self.r;
+        *self
+    }
+
     pub fn move_towards(&mut self, target: &HexMapPosition, speed: f32, _config: &HexGridConfig) {
         // 基于六边形网格的移动逻辑
         let dx = (target.x - self.x).clamp(-1, 1);
@@ -77,13 +86,6 @@ impl HexGridConfig {
     }
 }
 
-/// 将网格坐标转换为世界坐标
-pub fn grid_to_world(pos: HexMapPosition, hex_size: f32) -> Vec3 {
-    let x = hex_size * f32::sqrt(3.0) * (pos.x as f32 + 0.5 * (pos.y as f32 % 2.0));
-    let y = hex_size * 1.5 * pos.y as f32;
-    Vec3::new(x, y, 0.0)
-}
-
 pub fn world_to_grid(_pos: &Vec3, _hex_size: f32) -> HexMapPosition {
     HexMapPosition::default()
 }
@@ -95,15 +97,28 @@ pub fn hex_distance(a: HexMapPosition, b: HexMapPosition) -> i32 {
     (dx.abs() + (dx + dy).abs() + dy.abs()) / 2
 }
 
-/// 检查位置是否在网格范围内
-pub fn is_valid_position(pos: HexMapPosition, config: &HexGridConfig) -> bool {
-    pos.x >= 0 && pos.x < config.width as i32 && pos.y >= 0 && pos.y < config.height as i32
+// 立方体坐标的6个方向向量 [2,4](@ref)
+const CUBE_DIRECTIONS: [IVec3; 6] = [
+    IVec3::new(1, -1, 0), // 右 → 东北
+    IVec3::new(1, 0, -1), // 右上 → 东
+    IVec3::new(0, 1, -1), // 左上 → 西北
+    IVec3::new(-1, 1, 0), // 左 → 西南
+    IVec3::new(-1, 0, 1), // 左下 → 西
+    IVec3::new(0, -1, 1), // 右下 → 东南
+];
+
+pub fn get_neighbours(pos: HexMapPosition) -> Vec<HexMapPosition> {
+    CUBE_DIRECTIONS
+        .iter()
+        .map(|dir| pos.clone().add_cube_coord(dir))
+        .collect()
 }
 
 /// 空间分区系统
 #[derive(Debug, Resource)]
 pub struct SpatialPartition {
-    pub partitions: Vec<Vec<Entity>>, //在此格内的实体
+    pub cell_entity: Entity,
+    pub entities: Vec<Vec<Entity>>, //在此格内的实体
     pub config: HexGridConfig,
 }
 
@@ -113,18 +128,43 @@ impl SpatialPartition {
         let mut partitions = Vec::with_capacity(capacity);
         partitions.resize_with(capacity, Vec::new);
 
-        Self { partitions, config }
+        Self {
+            cell_entity: Entity::PLACEHOLDER.entity(),
+            entities: partitions,
+            config,
+        }
+    }
+
+    /// 检查位置是否在网格范围内
+    pub fn is_valid_position(&self, pos: &HexMapPosition) -> bool {
+        pos.x >= 0
+            && pos.x < self.config.width as i32
+            && pos.y >= 0
+            && pos.y < self.config.height as i32
+    }
+
+    pub fn is_obstacle(&self, _pos: &HexMapPosition) -> bool {
+        //TODO : 实体检查
+        return false;
     }
 
     /// 获取分区索引
-    fn get_index(&self, pos: HexMapPosition) -> usize {
+    fn get_index(&self, pos: &HexMapPosition) -> usize {
         (pos.y as usize * self.config.width) + pos.x as usize
+    }
+
+    /// 将网格坐标转换为世界坐标
+    pub fn grid_to_world(&self, pos: &IVec2) -> Vec3 {
+        let hex_size = self.config.size;
+        let x = hex_size * f32::sqrt(3.0) * (pos.x as f32 + 0.5 * (pos.y as f32 % 2.0));
+        let y = hex_size * 1.5 * pos.y as f32;
+        Vec3::new(x, y, 0.0)
     }
 
     /// 添加实体到分区
     pub fn insert(&mut self, entity: Entity, pos: HexMapPosition) {
-        let index = self.get_index(pos);
-        self.partitions[index].push(entity);
+        let index = self.get_index(&pos);
+        self.entities[index].push(entity);
     }
 
     /// 查询附近实体
@@ -141,8 +181,8 @@ impl SpatialPartition {
                         && pos.y >= 0
                         && pos.y < self.config.height as i32
                     {
-                        let index = self.get_index(pos);
-                        results.extend(&self.partitions[index]);
+                        let index = self.get_index(&pos);
+                        results.extend(&self.entities[index]);
                     }
                 }
             }
@@ -185,25 +225,6 @@ pub fn create_hex_mesh(mut meshes: ResMut<Assets<Mesh>>, size: f32) -> Handle<Me
     // mesh.rotate_by(Quat::from_rotation_z(std::f32::consts::FRAC_PI_6)); // 平顶布局需要旋转30度
     // 注意，旋转mesh会同时旋转了uv，所以计算时应当以尖顶六边形的uv来计算
     meshes.add(mesh)
-}
-
-/// 六边形坐标系统
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct HexCoord {
-    pub q: i32,
-    pub r: i32,
-}
-
-impl HexCoord {
-    pub fn new(q: i32, r: i32) -> Self {
-        Self { q, r }
-    }
-}
-
-impl From<(i32, i32)> for HexCoord {
-    fn from((q, r): (i32, i32)) -> Self {
-        HexCoord { q, r }
-    }
 }
 
 #[cfg(test)]

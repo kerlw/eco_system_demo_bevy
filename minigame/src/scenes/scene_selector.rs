@@ -1,4 +1,5 @@
 use bevy::{asset::AssetLoadFailedEvent, prelude::*};
+use bevy_behave::prelude::BehaveCtx;
 
 use crate::{
     ai::*,
@@ -71,7 +72,20 @@ impl Plugin for SceneSelectorPlugin {
                 FixedUpdate,
                 idle_action_system.in_set(SceneSystemSet::GameSystems),
             )
+            .add_observer(onadd_idle_action)
+            .add_observer(on_new_behaviour)
             // 退出Playing状态的系统注册
             .add_systems(OnExit(GameState::Playing), despawn_scene);
+    }
+}
+
+
+#[allow(unused)]
+fn on_new_behaviour(
+    trigger: Trigger<OnAdd, BehaveCtx>,
+    q: Query<(Entity, Option<&Name>, &BehaveCtx)>,
+) {
+    if let Ok((entity, name, ctx)) = q.get(trigger.target()) {
+        info!("New behaviour spawned {entity} {ctx} = {name:?}");
     }
 }

@@ -1,6 +1,7 @@
 //! 实体移动系统实现
 use super::super::components::{EnergyStore, MoveTo, VisionRange};
-use super::super::hex_grid::{HexGridConfig, HexMapPosition, hex_distance, is_valid_position};
+use super::super::hex_grid::{HexGridConfig, HexMapPosition, hex_distance};
+use crate::core::hex_grid::SpatialPartition;
 use crate::core::state::GameState;
 use bevy::prelude::*;
 
@@ -71,6 +72,7 @@ pub fn movement_system(
     )>,
     time: Res<Time>,
     config: Res<HexGridConfig>,
+    partition: Res<SpatialPartition>,
 ) {
     for (entity, mut position, mut move_to, mut energy, vision_range) in &mut query {
         if let Some(next_pos) = move_to.path.first() {
@@ -86,7 +88,7 @@ pub fn movement_system(
             }
 
             // 检查位置有效性
-            if !is_valid_position(*next_pos, &config) {
+            if !partition.is_valid_position(next_pos) {
                 commands.entity(entity).remove::<MoveTo>();
                 continue;
             }

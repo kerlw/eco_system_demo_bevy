@@ -83,9 +83,3 @@ pub struct MoveTo {
 pub struct VisionRange {
     pub radius: i32,
 }
-
-/// 空间分区
-#[derive(Component, Debug)]
-pub struct SpatialPartition {
-    pub grid: Vec<Vec<Option<Entity>>>,
-}
