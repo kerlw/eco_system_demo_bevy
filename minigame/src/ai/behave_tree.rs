@@ -1,14 +1,41 @@
-use std::cmp::max;
-
+use crate::core::components::EntityType;
+use crate::core::hex_grid::{HexMapPosition, get_neighbours};
+use crate::core::systems::hex_grid::SpatialPartition;
 use bevy::prelude::*;
 use bevy_behave::prelude::*;
+use std::cmp::{max, min};
 
-use crate::core::components::EntityType;
-use crate::core::hex_grid::get_neighbours;
-use crate::core::systems::hex_grid::SpatialPartition;
+// 探索方向（随机移动）偏好组件
+#[derive(Component, Debug, Clone)]
+pub struct MovementPreference {
+    pub direction: Vec3, // 当前偏好方向向量，以此direction为ZERO表示未初始化探索方向
+    pub strength: f32,   // 方向偏好强度 (0.0-1.0)
+    pub stability: f32,  // 方向稳定性 (0-1, 越高越不易改变)
+}
 
-#[derive(Component, Default, Clone)]
-pub struct IdleAction;
+impl Default for MovementPreference {
+    fn default() -> Self {
+        Self {
+            direction: Vec3::ZERO, // 默认向右
+            strength: 0.7,
+            stability: 0.8,
+        }
+    }
+}
+
+// 记录一次探索过程数据的组件
+#[derive(Component, Debug, Default, Clone)]
+pub struct Exploration {
+    pub direction: Vec3,               // 当前探索方向
+    pub steps_remaining: i8,           // 剩余移动步数
+    pub base_position: HexMapPosition, // 探索起始点
+}
+
+#[derive(Component, Debug, Default, Clone)]
+pub struct IdleAction {
+    pub preference: MovementPreference,
+    pub exploration: Exploration,
+}
 
 pub fn get_ai_behave_tree(entity_type: EntityType) -> Tree<Behave> {
     let eat_subtree = behave! {
@@ -70,22 +97,22 @@ pub enum ActorState {
 #[derive(Component, Debug, Clone, Default)]
 #[require(Transform)]
 pub struct AnimalActorBoard {
-    pub current_pos: IVec2,         // 当前六边形坐标
-    pub move_target: Option<IVec2>, // 移动目标坐标
-    pub path_buffer: Vec<IVec2>,    // 预计算的路径缓冲区
-    pub state: ActorState,          // 当前行为状态
-    pub idle_counter: u32,          // 空闲计数器
-    pub move_cd_timer: Timer,       // 移动CD计时器
-    pub satiety: u32,               // 饱食度
-    pub path_cost: f32,             // 路径代价（用于D*Lite）[2](@ref)
+    pub current_pos: HexMapPosition,         // 当前六边形坐标
+    pub move_target: Option<HexMapPosition>, // 移动目标坐标
+    pub path_buffer: Vec<HexMapPosition>,    // 预计算的路径缓冲区
+    pub state: ActorState,                   // 当前行为状态
+    pub idle_counter: u32,                   // 空闲计数器
+    pub move_cd_timer: Timer,                // 移动CD计时器
+    pub satiety: u32,                        // 饱食度
+    pub path_cost: f32,                      // 路径代价（用于D*Lite）[2](@ref)
     pub entity_type: EntityType,
 }
 
-// 新增寻路请求队列（异步处理避免卡顿）
-#[derive(Resource, Default)]
-pub struct PathfindingQueue {
-    requests: Vec<(Entity, UVec2, PathAlgorithm)>, // (实体, 目标点, 算法类型)
-}
+// // 新增寻路请求队列（异步处理避免卡顿）
+// #[derive(Resource, Default)]
+// pub struct PathfindingQueue {
+//     requests: Vec<(Entity, UVec2, PathAlgorithm)>, // (实体, 目标点, 算法类型)
+// }
 
 // 算法选择策略
 #[derive(Debug, Clone, Copy)]
@@ -97,20 +124,40 @@ pub enum PathAlgorithm {
 
 pub fn idle_action_system(
     mut commands: Commands,
-    query: Query<&BehaveCtx, With<IdleAction>>,
+    mut query: Query<(&BehaveCtx, &mut IdleAction)>,
     mut board_query: Query<(&mut Transform, &mut AnimalActorBoard)>,
     partition: Res<SpatialPartition>,
     time: Res<Time>,
 ) {
-    for ctx in query.iter() {
+    for (ctx, mut action) in query.iter_mut() {
         if let Ok((mut transform, mut actor)) = board_query.get_mut(ctx.target_entity()) {
+            // TODO 如果进入食物链捕食者视野范围，则进入逃离模式
+            // 如果进入饥饿临界值，进入觅食状态
+            if actor.satiety <= 50 {
+                actor.state = ActorState::Seeking;
+                commands.trigger(ctx.failure());
+                return;
+            }
+
+            // 移动cd未结束时不进行行动
+            if !actor.move_cd_timer.tick(time.delta()).finished() {
+                return;
+            }
+
+            actor.move_cd_timer.reset();
+
             match actor.state {
                 ActorState::Idle => {
                     actor.idle_counter += 1;
                     // 保持Idle的概率：最大30%的概率，idle_counter每增加1，概率降低10%，但最小保留1%的概率。
-                    if rand::random_ratio(max(99, 60 + actor.idle_counter * 10), 100) {
+                    if rand::random_ratio(min(99, 50 + actor.idle_counter * 10), 100) {
                         actor.state = ActorState::RandomMove;
                         actor.idle_counter = 0;
+                        // 将探索方向设置为ZERO在下面的逻辑中进行初始化
+                        action.preference.direction = Vec3::ZERO;
+                    } else {
+                        warn!("idle_action: idle...");
+                        return;
                     }
                 }
                 ActorState::RandomMove => {}
@@ -119,44 +166,83 @@ pub fn idle_action_system(
                     return;
                 }
             }
+
             // 运行到此处，actor处于RandomMove状态
-            // 如果进入饥饿临界值，进入觅食状态
-            if actor.satiety <= 50 {
-                actor.state = ActorState::Seeking;
-                commands.trigger(ctx.failure());
+            // 判断一个坐标对应的地块是否可以通行
+            let is_valid = |cell: &HexMapPosition| {
+                partition.is_valid_position(cell) && !partition.is_obstacle(cell)
+            };
+            // 获取周边可以同行的地块集合
+            let neighbours: Vec<HexMapPosition> = get_neighbours(actor.current_pos.into())
+                .into_iter()
+                .filter(is_valid)
+                .collect();
+            // 如果周围都不可通行，则随机漫步失败。
+            if neighbours.is_empty() {
+                info!("random_walk failed! target: {:?}", actor.current_pos);
+                commands.trigger(ctx.failure()); //TODO 无法移动时直接失败可能对性能有影响
                 return;
             }
 
-            // 移动cd冷却结束，方可继续移动
-            if actor.move_cd_timer.tick(time.delta()).finished() {
-                actor.move_cd_timer.reset();
+            // 检查MovePreference的随机方向，若方向没有改变，则重新随机生成方向向量
+            if action.preference.direction == Vec3::ZERO {
+                let target = if neighbours.len() > 1 {
+                    neighbours[rand::random_range(1..neighbours.len()) - 1]
+                } else {
+                    neighbours[0]
+                };
+                action.preference.direction = (target.cube_coord()
+                    - actor.current_pos.cube_coord())
+                .as_vec3()
+                .normalize();
+                // 初始化探索行为数据
+                action.exploration = Exploration {
+                    direction: action.preference.direction,
+                    steps_remaining: rand::random_range(3..6),
+                    base_position: actor.current_pos,
+                };
 
-                actor.state = ActorState::Idle; // 移动后回归Idle状态
-                let mut neighbours = get_neighbours(actor.current_pos.into());
-                info!("Neighbours: {:?}", neighbours);
-                loop {
-                    if neighbours.is_empty() {
-                        break;
-                    }
-                    // 随机选取一个邻近的坐标作为下次移动的目标
-                    let neighbour = if neighbours.len() > 1 {
-                        neighbours.remove(rand::random_range(0..(neighbours.len() - 1)))
-                    } else {
-                        neighbours[0]
+                // partition.entity_move()
+                actor.current_pos = target;
+                transform.translation = partition.grid_to_world(&target.to_vec2());
+            } else {
+                // 对于有配置的，则进行随机偏移
+                action.exploration.steps_remaining -= 1;
+                // 完成本次探索后回归Idle状态
+                if action.exploration.steps_remaining < 0 {
+                    actor.state = ActorState::Idle;
+                    actor.idle_counter = 0;
+                    info!("exploration finished.");
+                    return;
+                }
+
+                let mut candidates = Vec::new();
+
+                // info!("Neighbours: {:?}", neighbours);
+                for neighbour in neighbours {
+                    // 1. 方向偏好评分
+                    let dir_score = {
+                        let vec_to_neighbour =
+                            neighbour.cube_coord() - actor.current_pos.cube_coord();
+                        let pref_dir = action.preference.direction.normalize();
+                        vec_to_neighbour.as_vec3().normalize().dot(pref_dir)
                     };
 
-                    if !partition.is_valid_position(&neighbour) || partition.is_obstacle(&neighbour)
-                    {
-                        continue;
-                    }
+                    // 2. 动态避障检测
+                    let collision_risk =
+                        dynamic_obstacle_risk(&neighbour, &partition, ctx.target_entity());
 
-                    info!("Move to {:?}", &neighbour);
-                    actor.current_pos = neighbour.to_vec2();
-                    let mut center = partition.grid_to_world(&actor.current_pos);
-                    center.z = 3.0; //移动类型的entity的z轴设为3.0,以便其他类型的entity在其上方渲染。
-                    transform.translation = center;
+                    // 3. 综合权重 = 基础权重 + 方向偏好 - 避障惩罚
+                    let weight =
+                        1.0 + (dir_score * action.preference.strength) - (collision_risk * 10.0);
+
+                    candidates.push((neighbour, weight.max(0.01))); // 最小权重避免除零
+                }
+                if let Some(target_pos) = weighted_random_choice(&candidates) {
+                    info!("Next Move To: {:?}", &target_pos);
+                    actor.current_pos = target_pos;
                     //TODO entity移动了，需要修改partition中的entities的数据
-                    break;
+                    transform.translation = partition.grid_to_world(&target_pos.to_vec2());
                 }
             }
         }
@@ -168,4 +254,57 @@ pub fn onadd_idle_action(
     _q: Query<&BehaveCtx, With<IdleAction>>,
 ) {
     info!("==IdleAction:OnAdd==");
+}
+
+// 动态避障检测函数
+fn dynamic_obstacle_risk(
+    target: &HexMapPosition,
+    partition: &SpatialPartition,
+    exclude_entity: Entity,
+) -> f32 {
+    let mut risk: f32 = 0.0;
+
+    // 1. 检查目标位置是否有其他实体
+    let entities = partition.entities_at(target);
+    for entity in entities {
+        if entity != exclude_entity {
+            risk = risk.max(1.0); // 完全避免碰撞
+        }
+    }
+
+    // 2. 检查相邻位置的实体密度
+    for neighbour in get_neighbours(*target) {
+        let entities = partition.entities_at(&neighbour);
+        let count = entities
+            .into_iter()
+            .filter(|&e| e != exclude_entity)
+            .count() as f32;
+        risk = risk.max(count * 0.3);
+    }
+
+    risk
+}
+
+// 基于权重的概率选择（Rust版）
+fn weighted_random_choice(candidates: &[(HexMapPosition, f32)]) -> Option<HexMapPosition> {
+    if candidates.is_empty() {
+        return None;
+    }
+
+    // 1. 计算总权重
+    let total_weight: f32 = candidates.iter().map(|(_, w)| w).sum();
+
+    // 2. 生成[0, total_weight]区间随机数
+    let mut rand_val = rand::random_range(0.0..=total_weight);
+
+    // 3. 遍历找到权重区间匹配项
+    for (pos, weight) in candidates {
+        rand_val -= weight;
+        if rand_val <= 0.0 {
+            return Some(*pos);
+        }
+    }
+
+    // 4. 浮点误差处理
+    candidates.last().map(|(p, _)| *p)
 }

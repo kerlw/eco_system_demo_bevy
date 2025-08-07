@@ -4,7 +4,7 @@ use bevy::input::common_conditions::input_just_pressed;
 use bevy::prelude::*;
 use bevy::sprite::Material2dPlugin;
 use bevy::window::PrimaryWindow;
-use bevy::winit::WinitSettings;
+use bevy::winit::{UpdateMode, WinitSettings};
 use bevy_behave::prelude::BehavePlugin;
 use bevy_screen_diagnostics::{
     ScreenDiagnosticsPlugin, ScreenEntityDiagnosticsPlugin, ScreenFrameDiagnosticsPlugin,
@@ -42,7 +42,10 @@ fn close_window_on_esc(
 pub fn create_app() -> App {
     let mut app = App::new();
     app.add_plugins(DefaultPlugins)
-        .insert_resource(WinitSettings::desktop_app())
+        .insert_resource(WinitSettings {
+            focused_mode: UpdateMode::Continuous,   // 窗口聚焦时持续运行
+            unfocused_mode: UpdateMode::Continuous, // 窗口失焦时也持续运行
+        })
         .add_plugins(Material2dPlugin::<HexagonBorderMaterial>::default())
         .add_plugins(ScreenDiagnosticsPlugin::default())
         .add_plugins(ScreenFrameDiagnosticsPlugin)

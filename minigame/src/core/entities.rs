@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use crate::{
     ai::{AnimalActorBoard, get_ai_behave_tree},
     core::{
@@ -126,10 +128,12 @@ pub fn spawn_entity(
     match config.entity_type {
         EntityType::Rabbit => {
             // info!("spawn rabbit behave tree");
+            let mut timer = Timer::from_seconds(1.0, TimerMode::Repeating);
+            timer.tick(Duration::from_millis(1500));
             cmd.insert((
                 AnimalActorBoard {
-                    current_pos: config.pos,
-                    move_cd_timer: Timer::from_seconds(1.0, TimerMode::Repeating),
+                    current_pos: HexMapPosition::from(config.pos),
+                    move_cd_timer: timer,
                     entity_type: EntityType::Rabbit,
                     satiety: 100,
                     ..Default::default()

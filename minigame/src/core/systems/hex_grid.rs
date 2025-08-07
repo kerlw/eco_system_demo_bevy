@@ -98,7 +98,7 @@ pub fn hex_distance(a: HexMapPosition, b: HexMapPosition) -> i32 {
 }
 
 // 立方体坐标的6个方向向量 [2,4](@ref)
-const CUBE_DIRECTIONS: [IVec3; 6] = [
+pub const CUBE_DIRECTIONS: [IVec3; 6] = [
     IVec3::new(1, -1, 0), // 右 → 东北
     IVec3::new(1, 0, -1), // 右上 → 东
     IVec3::new(0, 1, -1), // 左上 → 西北
@@ -165,6 +165,10 @@ impl SpatialPartition {
     pub fn insert(&mut self, entity: Entity, pos: HexMapPosition) {
         let index = self.get_index(&pos);
         self.entities[index].push(entity);
+    }
+
+    pub fn entities_at(&self, pos: &HexMapPosition) -> Vec<Entity> {
+        vec![]
     }
 
     /// 查询附近实体

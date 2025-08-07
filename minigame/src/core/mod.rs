@@ -7,4 +7,5 @@ pub use bevy::prelude::State;
 pub use components::{EnergyStore, MoveTo};
 pub use hex_grid::HexGridConfig;
 pub use state::*;
+pub use systems::hex_grid::CUBE_DIRECTIONS;
 pub use systems::*;
