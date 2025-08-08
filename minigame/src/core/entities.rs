@@ -1,9 +1,8 @@
 use std::time::Duration;
 
 use crate::{
-    ai::{AnimalActorBoard, get_ai_behave_tree},
+    ai::{get_ai_behave_tree, AnimalActorBoard, FrameCounter},
     core::{
-        HexGridConfig,
         components::EntityType,
         hex_grid::{HexMapPosition, SpatialPartition},
     },
@@ -14,7 +13,7 @@ use crate::{
     scenes::GameSceneRoot,
     sprite::sprite_mgr::SpriteManager,
 };
-use bevy::{color::palettes::css::WHITE, prelude::*};
+use bevy::prelude::*;
 use bevy_behave::prelude::BehaveTree;
 
 #[derive(Component)]
@@ -135,7 +134,8 @@ pub fn spawn_entity(
                     current_pos: HexMapPosition::from(config.pos),
                     move_cd_timer: timer,
                     entity_type: EntityType::Rabbit,
-                    satiety: 100,
+                    satiety: 5500,
+                    decay_faction: 1.1, // TODO根据不同的动物类型配置不同的饱食度衰减
                     ..Default::default()
                 },
                 children![(
@@ -219,6 +219,7 @@ pub fn spawn_entities_system(
     mut partition: ResMut<SpatialPartition>,
     root: Query<Entity, With<GameSceneRoot>>,
 ) {
+    commands.insert_resource(FrameCounter::default());
     let level_config = level_data.get(&level_loader.level_data).unwrap();
     for cfg in level_config.entities.iter() {
         spawn_entity(

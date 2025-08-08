@@ -1,9 +1,10 @@
 use crate::core::components::EntityType;
 use crate::core::hex_grid::{HexMapPosition, get_neighbours};
 use crate::core::systems::hex_grid::SpatialPartition;
+use bevy::color::palettes::css::*;
 use bevy::prelude::*;
 use bevy_behave::prelude::*;
-use std::cmp::{max, min};
+use std::cmp::min;
 
 // 探索方向（随机移动）偏好组件
 #[derive(Component, Debug, Clone)]
@@ -31,6 +32,11 @@ pub struct Exploration {
     pub base_position: HexMapPosition, // 探索起始点
 }
 
+#[derive(Component, Debug, Clone, Default)]
+pub struct ForageAction {
+    pub food_entity_type: EntityType,
+}
+
 #[derive(Component, Debug, Default, Clone)]
 pub struct IdleAction {
     pub preference: MovementPreference,
@@ -38,9 +44,9 @@ pub struct IdleAction {
 }
 
 pub fn get_ai_behave_tree(entity_type: EntityType) -> Tree<Behave> {
-    let eat_subtree = behave! {
+    let forage_subtree = behave! {
         Behave::Fallback => {
-            Behave::AlwaysFail,
+            Behave::spawn_named("Forage Action", ForageAction { food_entity_type: EntityType::Grass}),
         }
     };
     let flee_subtree = behave! {
@@ -60,7 +66,7 @@ pub fn get_ai_behave_tree(entity_type: EntityType) -> Tree<Behave> {
                 Behave::Forever => {
                     Behave::Fallback => {
                         @ flee_subtree,
-                        @ eat_subtree,
+                        @ forage_subtree,
                         @ idle_subtree
                     }
                 }
@@ -70,7 +76,7 @@ pub fn get_ai_behave_tree(entity_type: EntityType) -> Tree<Behave> {
             return behave! {
                 Behave::Forever => {
                     Behave::Fallback => {
-                        @eat_subtree,
+                        @forage_subtree,
                         @idle_subtree
                     }
                 }
@@ -103,7 +109,8 @@ pub struct AnimalActorBoard {
     pub state: ActorState,                   // 当前行为状态
     pub idle_counter: u32,                   // 空闲计数器
     pub move_cd_timer: Timer,                // 移动CD计时器
-    pub satiety: u32,                        // 饱食度
+    pub satiety: i32,                        // 饱食度:放大100倍来避免float类型计算
+    pub decay_faction: f32,                  // 饱食度衰减因子，表示每秒衰减的饱食度
     pub path_cost: f32,                      // 路径代价（用于D*Lite）[2](@ref)
     pub entity_type: EntityType,
 }
@@ -122,6 +129,15 @@ pub enum PathAlgorithm {
     Hybrid,    // 中CD动物（混合策略）
 }
 
+pub fn forage_action_system(
+    mut commands: Commands,
+    mut query: Query<(&BehaveCtx, &mut ForageAction)>,
+    mut board_query: Query<(&mut Transform, &mut AnimalActorBoard)>,
+    partition: Res<SpatialPartition>,
+    time: Res<Time>,
+) {
+}
+
 pub fn idle_action_system(
     mut commands: Commands,
     mut query: Query<(&BehaveCtx, &mut IdleAction)>,
@@ -133,15 +149,15 @@ pub fn idle_action_system(
         if let Ok((mut transform, mut actor)) = board_query.get_mut(ctx.target_entity()) {
             // TODO 如果进入食物链捕食者视野范围，则进入逃离模式
             // 如果进入饥饿临界值，进入觅食状态
-            if actor.satiety <= 50 {
+            if actor.satiety <= 5000 {
                 actor.state = ActorState::Seeking;
                 commands.trigger(ctx.failure());
-                return;
+                continue;
             }
 
             // 移动cd未结束时不进行行动
             if !actor.move_cd_timer.tick(time.delta()).finished() {
-                return;
+                continue;
             }
 
             actor.move_cd_timer.reset();
@@ -157,13 +173,13 @@ pub fn idle_action_system(
                         action.preference.direction = Vec3::ZERO;
                     } else {
                         warn!("idle_action: idle...");
-                        return;
+                        continue;
                     }
                 }
                 ActorState::RandomMove => {}
                 _ => {
                     commands.trigger(ctx.failure());
-                    return;
+                    continue;
                 }
             }
 
@@ -181,7 +197,7 @@ pub fn idle_action_system(
             if neighbours.is_empty() {
                 info!("random_walk failed! target: {:?}", actor.current_pos);
                 commands.trigger(ctx.failure()); //TODO 无法移动时直接失败可能对性能有影响
-                return;
+                continue;
             }
 
             // 检查MovePreference的随机方向，若方向没有改变，则重新随机生成方向向量
@@ -204,7 +220,7 @@ pub fn idle_action_system(
 
                 // partition.entity_move()
                 actor.current_pos = target;
-                transform.translation = partition.grid_to_world(&target.to_vec2());
+                transform.translation = partition.grid_to_world(&target.to_vec2()) + Vec3::Z * 3.0;
             } else {
                 // 对于有配置的，则进行随机偏移
                 action.exploration.steps_remaining -= 1;
@@ -213,7 +229,7 @@ pub fn idle_action_system(
                     actor.state = ActorState::Idle;
                     actor.idle_counter = 0;
                     info!("exploration finished.");
-                    return;
+                    continue;
                 }
 
                 let mut candidates = Vec::new();
@@ -242,7 +258,8 @@ pub fn idle_action_system(
                     info!("Next Move To: {:?}", &target_pos);
                     actor.current_pos = target_pos;
                     //TODO entity移动了，需要修改partition中的entities的数据
-                    transform.translation = partition.grid_to_world(&target_pos.to_vec2());
+                    transform.translation =
+                        partition.grid_to_world(&target_pos.to_vec2()) + Vec3::Z * 3.0;
                 }
             }
         }
@@ -307,4 +324,22 @@ fn weighted_random_choice(candidates: &[(HexMapPosition, f32)]) -> Option<HexMap
 
     // 4. 浮点误差处理
     candidates.last().map(|(p, _)| *p)
+}
+
+pub fn render_gizmos(
+    mut gizmos: Gizmos,
+    query: Query<(&BehaveCtx, &mut IdleAction)>,
+    board_query: Query<(&Transform, &AnimalActorBoard)>,
+) {
+    for (ctx, action) in query {
+        if let Ok((trans, _)) = board_query.get(ctx.target_entity()) {
+            let end = trans.translation + action.preference.direction * 50.0;
+            gizmos.arrow_2d(trans.translation.xy(), end.xy(), RED);
+        }
+    }
+    for (transform, board) in board_query {
+        if board.satiety <= 5000 {
+            gizmos.circle_2d(transform.translation.xy(), 30.0, RED);
+        }
+    }
 }

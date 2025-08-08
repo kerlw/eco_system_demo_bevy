@@ -70,15 +70,21 @@ impl Plugin for SceneSelectorPlugin {
             //以下是AI控制部分的系统注册
             .add_systems(
                 FixedUpdate,
-                idle_action_system.in_set(SceneSystemSet::GameSystems),
+                (
+                    udpate_board_state_system,
+                    idle_action_system,
+                    forage_action_system,
+                )
+                    .chain()
+                    .in_set(SceneSystemSet::GameSystems),
             )
-            .add_observer(onadd_idle_action)
-            .add_observer(on_new_behaviour)
+            .add_systems(Update, render_gizmos.in_set(SceneSystemSet::GameSystems))
+            // .add_observer(onadd_idle_action)
+            // .add_observer(on_new_behaviour)
             // 退出Playing状态的系统注册
             .add_systems(OnExit(GameState::Playing), despawn_scene);
     }
 }
-
 
 #[allow(unused)]
 fn on_new_behaviour(
