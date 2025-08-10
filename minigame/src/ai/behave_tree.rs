@@ -1,10 +1,10 @@
 use crate::core::components::EntityType;
 use crate::core::hex_grid::{EntityWithCoord, HexMapPosition, get_neighbours, hex_distance};
 use crate::core::systems::hex_grid::SpatialPartition;
-use crate::level::config::LevelConfigAsset;
 use bevy::color::palettes::css::*;
 use bevy::prelude::*;
 use bevy_behave::prelude::*;
+use pathfinding::prelude::*;
 use std::cmp::min;
 
 // 探索方向（随机移动）偏好组件
@@ -154,7 +154,7 @@ pub fn forage_action_system(
     mut query: Query<(&BehaveCtx, &mut ForageAction)>,
     mut actor_query: Query<(&mut Transform, &mut AnimalActorBoard)>,
     mut target_query: Query<(Entity, &mut EdibleEntity)>,
-    partition: Res<SpatialPartition>,
+    mut partition: ResMut<SpatialPartition>,
     time: Res<Time>,
 ) {
     for (ctx, mut action) in query.iter_mut() {
@@ -168,6 +168,7 @@ pub fn forage_action_system(
                 }
                 _ => {
                     if actor.satiety >= 8000 {
+                        actor.clear_forage_target();
                         commands.trigger(ctx.failure());
                         continue;
                     } else {
@@ -203,7 +204,7 @@ pub fn forage_action_system(
                 let mut entities = partition.entities_by_type(&food_type);
                 if entities.is_empty() {
                     warn!("forage_action: No {food_type:?} to forage!");
-                    actor.forage_target = None;
+                    actor.clear_forage_target();
                     continue;
                 }
 
@@ -218,9 +219,30 @@ pub fn forage_action_system(
                     if let Ok((_, mut edible)) = target_query.get_mut(e.entity) {
                         if edible.reserved_by.is_none() {
                             edible.reserved_by = Some(this_entity.clone());
-                            actor.forage_target = Some(e.entity);
-                            actor.move_target = Some(e.pos.clone());
+                            actor.set_forage_target(e);
                         }
+                    }
+                }
+
+                if let Some(move_target) = actor.move_target {
+                    let pref = partition.as_ref();
+                    if let Some((path, _)) = astar(
+                        &actor.current_pos,
+                        |p| {
+                            let neighbours = pref.get_valid_neighbours(p);
+                            return neighbours.into_iter().map(|p| (p, 1)).collect::<Vec<_>>();
+                        },
+                        |p| hex_distance(p, &move_target),
+                        |p| *p == move_target,
+                    ) {
+                        //move to
+                        let next_pos = path[0];
+                        move_actor_to_next_pos(
+                            &mut actor,
+                            &mut transform,
+                            &next_pos,
+                            &mut partition,
+                        );
                     }
                 }
             }
@@ -232,7 +254,7 @@ pub fn idle_action_system(
     mut commands: Commands,
     mut query: Query<(&BehaveCtx, &mut IdleAction)>,
     mut board_query: Query<(&mut Transform, &mut AnimalActorBoard)>,
-    partition: Res<SpatialPartition>,
+    mut partition: ResMut<SpatialPartition>,
     time: Res<Time>,
 ) {
     for (ctx, mut action) in query.iter_mut() {
@@ -309,8 +331,7 @@ pub fn idle_action_system(
                 };
 
                 // partition.entity_move()
-                actor.current_pos = target;
-                transform.translation = partition.grid_to_world(&target.to_vec2()) + Vec3::Z * 3.0;
+                move_actor_to_next_pos(&mut actor, &mut transform, &target, &mut partition);
             } else {
                 // 对于有配置的，则进行随机偏移
                 action.exploration.steps_remaining -= 1;
@@ -346,14 +367,22 @@ pub fn idle_action_system(
                 }
                 if let Some(target_pos) = weighted_random_choice(&candidates) {
                     info!("Next Move To: {:?}", &target_pos);
-                    actor.current_pos = target_pos;
-                    //TODO entity移动了，需要修改partition中的entities的数据
-                    transform.translation =
-                        partition.grid_to_world(&target_pos.to_vec2()) + Vec3::Z * 3.0;
+                    move_actor_to_next_pos(&mut actor, &mut transform, &target_pos, &mut partition);
                 }
             }
         }
     }
+}
+
+fn move_actor_to_next_pos(
+    actor: &mut AnimalActorBoard,
+    transform: &mut Transform,
+    target_pos: &HexMapPosition,
+    partition: &mut SpatialPartition,
+) {
+    //TODO entity移动了，需要修改partition中的entities的数据
+    actor.current_pos = target_pos.clone();
+    transform.translation = partition.grid_to_world(&target_pos.to_vec2()) + Vec3::Z * 3.0;
 }
 
 pub fn onadd_idle_action(

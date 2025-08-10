@@ -162,6 +162,14 @@ impl SpatialPartition {
         return false;
     }
 
+    pub fn get_valid_neighbours(&self, pos: &HexMapPosition) -> Vec<HexMapPosition> {
+        CUBE_DIRECTIONS
+            .iter()
+            .map(|dir| pos.clone().add_cube_coord(dir))
+            .filter(|pos| self.is_valid_position(pos) && !self.is_obstacle(pos))
+            .collect()
+    }
+
     /// 获取分区索引
     fn get_index(&self, pos: &HexMapPosition) -> usize {
         (pos.y as usize * self.config.width) + pos.x as usize
