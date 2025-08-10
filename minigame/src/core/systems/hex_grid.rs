@@ -111,12 +111,12 @@ pub const CUBE_DIRECTIONS: [IVec3; 6] = [
     IVec3::new(0, -1, 1), // 右下 → 东南
 ];
 
-pub fn get_neighbours(pos: &HexMapPosition) -> Vec<HexMapPosition> {
-    CUBE_DIRECTIONS
-        .iter()
-        .map(|dir| pos.clone().add_cube_coord(dir))
-        .collect()
-}
+// pub fn get_neighbours(pos: &HexMapPosition) -> Vec<HexMapPosition> {
+//     CUBE_DIRECTIONS
+//         .iter()
+//         .map(|dir| pos.clone().add_cube_coord(dir))
+//         .collect()
+// }
 
 #[derive(Debug, Resource, Clone, Eq, PartialEq, Hash)]
 pub struct EntityWithCoord {
@@ -168,6 +168,25 @@ impl SpatialPartition {
             .map(|dir| pos.clone().add_cube_coord(dir))
             .filter(|pos| self.is_valid_position(pos) && !self.is_obstacle(pos))
             .collect()
+    }
+
+    pub fn remove_entity(&mut self, entity: Entity, pos: &HexMapPosition, entity_type: EntityType) {
+        let index = self.get_index(pos);
+        self.entities_map.get_mut(&entity_type).map(|entities| {
+            entities.remove(&EntityWithCoord {
+                entity,
+                pos: pos.clone(),
+            });
+        });
+        match entity_type {
+            EntityType::Cell => {}
+            EntityType::Grass => {
+                self.ground_entities[index].remove(&entity);
+            }
+            _ => {
+                self.other_entities[index].remove(&entity);
+            }
+        }
     }
 
     /// 获取分区索引

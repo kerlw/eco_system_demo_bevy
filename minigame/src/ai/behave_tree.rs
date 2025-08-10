@@ -1,5 +1,5 @@
 use crate::core::components::EntityType;
-use crate::core::hex_grid::{EntityWithCoord, HexMapPosition, get_neighbours, hex_distance};
+use crate::core::hex_grid::{EntityWithCoord, HexMapPosition, hex_distance};
 use crate::core::systems::hex_grid::SpatialPartition;
 use bevy::color::palettes::css::*;
 use bevy::prelude::*;
@@ -133,6 +133,16 @@ impl AnimalActorBoard {
         self.forage_target = None;
         self.move_target = None;
     }
+
+    pub fn do_eat(&mut self) -> EntityWithCoord {
+        let result = EntityWithCoord {
+            entity: self.forage_target.unwrap(),
+            pos: self.move_target.unwrap(),
+        };
+        self.satiety += 5000;
+        self.clear_forage_target();
+        return result;
+    }
 }
 
 // // 新增寻路请求队列（异步处理避免卡顿）
@@ -157,7 +167,7 @@ pub fn forage_action_system(
     mut partition: ResMut<SpatialPartition>,
     time: Res<Time>,
 ) {
-    for (ctx, mut action) in query.iter_mut() {
+    for (ctx, action) in query.iter_mut() {
         let this_entity = ctx.target_entity();
         if let Ok((mut transform, mut actor)) = actor_query.get_mut(this_entity) {
             match actor.state {
@@ -168,6 +178,7 @@ pub fn forage_action_system(
                 }
                 _ => {
                     if actor.satiety >= 8000 {
+                        actor.state = ActorState::Idle;
                         actor.clear_forage_target();
                         commands.trigger(ctx.failure());
                         continue;
@@ -193,13 +204,15 @@ pub fn forage_action_system(
                     }
                 }
             }
+
             // 选定觅食目标 或 重新选定觅食目标
             if actor.forage_target.is_none() {
-                let food_type = match actor.entity_type {
-                    EntityType::Rabbit => EntityType::Grass,
-                    EntityType::Fox => EntityType::Rabbit,
-                    _ => panic!("Unknown forage type"),
-                };
+                // let food_type = match actor.entity_type {
+                //     EntityType::Rabbit => EntityType::Grass,
+                //     EntityType::Fox => EntityType::Rabbit,
+                //     _ => panic!("Unknown forage type"),
+                // };
+                let food_type = action.food_entity_type.clone();
                 // actor.current_pos
                 let mut entities = partition.entities_by_type(&food_type);
                 if entities.is_empty() {
@@ -218,31 +231,57 @@ pub fn forage_action_system(
                 for e in entities {
                     if let Ok((_, mut edible)) = target_query.get_mut(e.entity) {
                         if edible.reserved_by.is_none() {
+                            warn!("forage_action: get forage {e:?}");
                             edible.reserved_by = Some(this_entity.clone());
                             actor.set_forage_target(e);
+                            break;
                         }
                     }
                 }
+            }
 
-                if let Some(move_target) = actor.move_target {
-                    let pref = partition.as_ref();
-                    if let Some((path, _)) = astar(
-                        &actor.current_pos,
-                        |p| {
-                            let neighbours = pref.get_valid_neighbours(p);
-                            return neighbours.into_iter().map(|p| (p, 1)).collect::<Vec<_>>();
-                        },
-                        |p| hex_distance(p, &move_target),
-                        |p| *p == move_target,
-                    ) {
+            // 有觅食目标的时候，向目标移动
+            if let Some(move_target) = actor.move_target {
+                let pref = partition.as_ref();
+                if let Some((path, _)) = astar(
+                    &actor.current_pos,
+                    |p| {
+                        pref.get_valid_neighbours(p)
+                            .into_iter()
+                            .map(|p| (p, 1))
+                            .collect::<Vec<_>>()
+                    },
+                    |p| hex_distance(p, &move_target),
+                    |p| *p == move_target,
+                ) {
+                    info!("forage action: Path to forage target: {path:?}");
+                    if path.len() > 1 {
                         //move to
-                        let next_pos = path[0];
+                        let next_pos = path[1];
                         move_actor_to_next_pos(
                             &mut actor,
                             &mut transform,
                             &next_pos,
                             &mut partition,
                         );
+                        if next_pos == move_target {
+                            let food = actor.do_eat();
+                            let food_entity = food.entity.clone();
+                            warn!(
+                                "forage action: Success to forage! start {partition:?} removing {food_entity:?}"
+                            );
+                            partition.remove_entity(
+                                food.entity,
+                                &food.pos,
+                                action.food_entity_type.clone(),
+                            );
+                            warn!("forage action: Success to forage! end {partition:?}");
+                            commands
+                                .entity(target_query.get(food.entity).unwrap().0)
+                                .despawn();
+                            commands.trigger(ctx.failure());
+                            continue;
+                        }
                     }
                 }
             }
@@ -301,7 +340,8 @@ pub fn idle_action_system(
                 partition.is_valid_position(cell) && !partition.is_obstacle(cell)
             };
             // 获取周边可以同行的地块集合
-            let neighbours: Vec<HexMapPosition> = get_neighbours(&actor.current_pos.into())
+            let neighbours: Vec<HexMapPosition> = partition
+                .get_valid_neighbours(&actor.current_pos.into())
                 .into_iter()
                 .filter(is_valid)
                 .collect();
@@ -409,7 +449,7 @@ fn dynamic_obstacle_risk(
     }
 
     // 2. 检查相邻位置的实体密度
-    for neighbour in get_neighbours(target) {
+    for neighbour in partition.get_valid_neighbours(target) {
         let entities = partition.entities_at(&neighbour);
         let count = entities
             .into_iter()
@@ -449,6 +489,7 @@ pub fn render_gizmos(
     mut gizmos: Gizmos,
     query: Query<(&BehaveCtx, &mut IdleAction)>,
     board_query: Query<(&Transform, &AnimalActorBoard)>,
+    partition: Res<SpatialPartition>,
 ) {
     for (ctx, action) in query {
         if let Ok((trans, _)) = board_query.get(ctx.target_entity()) {
@@ -457,8 +498,14 @@ pub fn render_gizmos(
         }
     }
     for (transform, board) in board_query {
+        let location = transform.translation.xy();
         if board.satiety <= 5000 {
-            gizmos.circle_2d(transform.translation.xy(), 30.0, RED);
+            gizmos.circle_2d(location.clone(), 30.0, RED);
+        }
+
+        if let Some(target) = board.move_target {
+            let end = partition.grid_to_world(&target.to_vec2());
+            gizmos.line_2d(location, end.xy(), RED);
         }
     }
 }

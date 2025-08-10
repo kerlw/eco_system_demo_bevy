@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use crate::{
-    ai::{AnimalActorBoard, FrameCounter, get_ai_behave_tree},
+    ai::{AnimalActorBoard, EdibleEntity, FrameCounter, get_ai_behave_tree},
     core::{
         components::EntityType,
         hex_grid::{HexMapPosition, SpatialPartition},
@@ -100,6 +100,7 @@ pub fn spawn_entity(
     let mut cmd = commands.spawn((
         sprite_manager.get_sprite_by_name(config.entity_type.to_string().to_lowercase().as_str()),
         Transform::from_translation(center),
+        EdibleEntity::default(),
     ));
 
     // 以下代码给精灵添加头顶ui，但更新ui可能存在性能问题，后面再研究
