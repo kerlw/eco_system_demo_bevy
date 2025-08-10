@@ -1,6 +1,7 @@
 use crate::core::components::EntityType;
-use crate::core::hex_grid::{HexMapPosition, get_neighbours};
+use crate::core::hex_grid::{EntityWithCoord, HexMapPosition, get_neighbours, hex_distance};
 use crate::core::systems::hex_grid::SpatialPartition;
+use crate::level::config::LevelConfigAsset;
 use bevy::color::palettes::css::*;
 use bevy::prelude::*;
 use bevy_behave::prelude::*;
@@ -92,18 +93,25 @@ pub fn get_ai_behave_tree(entity_type: EntityType) -> Tree<Behave> {
     }
 }
 
+// 记录可食用实体被标记为预占用的情况，避免觅食竞争
 #[derive(Component, Debug, Clone, Default)]
+pub struct EdibleEntity {
+    pub reserved_by: Option<Entity>,
+}
+
+#[derive(Component, Debug, Clone, Default, PartialEq)]
 pub enum ActorState {
     #[default]
     Idle,
     RandomMove,
-    Seeking,
+    Foraging,
     Flee,
 }
 #[derive(Component, Debug, Clone, Default)]
 #[require(Transform)]
 pub struct AnimalActorBoard {
     pub current_pos: HexMapPosition,         // 当前六边形坐标
+    pub forage_target: Option<Entity>,       // 觅食对象
     pub move_target: Option<HexMapPosition>, // 移动目标坐标
     pub path_buffer: Vec<HexMapPosition>,    // 预计算的路径缓冲区
     pub state: ActorState,                   // 当前行为状态
@@ -113,6 +121,18 @@ pub struct AnimalActorBoard {
     pub decay_faction: f32,                  // 饱食度衰减因子，表示每秒衰减的饱食度
     pub path_cost: f32,                      // 路径代价（用于D*Lite）[2](@ref)
     pub entity_type: EntityType,
+}
+
+impl AnimalActorBoard {
+    pub fn set_forage_target(&mut self, target: EntityWithCoord) {
+        self.forage_target = Some(target.entity);
+        self.move_target = Some(target.pos);
+    }
+
+    pub fn clear_forage_target(&mut self) {
+        self.forage_target = None;
+        self.move_target = None;
+    }
 }
 
 // // 新增寻路请求队列（异步处理避免卡顿）
@@ -132,10 +152,80 @@ pub enum PathAlgorithm {
 pub fn forage_action_system(
     mut commands: Commands,
     mut query: Query<(&BehaveCtx, &mut ForageAction)>,
-    mut board_query: Query<(&mut Transform, &mut AnimalActorBoard)>,
+    mut actor_query: Query<(&mut Transform, &mut AnimalActorBoard)>,
+    mut target_query: Query<(Entity, &mut EdibleEntity)>,
     partition: Res<SpatialPartition>,
     time: Res<Time>,
 ) {
+    for (ctx, mut action) in query.iter_mut() {
+        let this_entity = ctx.target_entity();
+        if let Ok((mut transform, mut actor)) = actor_query.get_mut(this_entity) {
+            match actor.state {
+                ActorState::Flee => {
+                    // 检查状态，如果是Flee状态则退出觅食逻辑
+                    commands.trigger(ctx.failure());
+                    continue;
+                }
+                _ => {
+                    if actor.satiety >= 8000 {
+                        commands.trigger(ctx.failure());
+                        continue;
+                    } else {
+                        actor.state = ActorState::Foraging;
+                    }
+                }
+            }
+
+            // 移动Cd未冷却时不能行动
+            if !actor.move_cd_timer.tick(time.delta()).finished() {
+                continue;
+            }
+
+            actor.move_cd_timer.reset();
+            // 对于已经有目标的要检查目标的预占对象是否是自己
+            if let Some(target) = actor.forage_target {
+                if let Ok((_, edible)) = target_query.get(target) {
+                    if let Some(reserved) = edible.reserved_by
+                        && reserved != this_entity
+                    {
+                        actor.clear_forage_target();
+                    }
+                }
+            }
+            // 选定觅食目标 或 重新选定觅食目标
+            if actor.forage_target.is_none() {
+                let food_type = match actor.entity_type {
+                    EntityType::Rabbit => EntityType::Grass,
+                    EntityType::Fox => EntityType::Rabbit,
+                    _ => panic!("Unknown forage type"),
+                };
+                // actor.current_pos
+                let mut entities = partition.entities_by_type(&food_type);
+                if entities.is_empty() {
+                    warn!("forage_action: No {food_type:?} to forage!");
+                    actor.forage_target = None;
+                    continue;
+                }
+
+                // 根据距离排序
+                entities.sort_by(|a, b| {
+                    hex_distance(&a.pos, &actor.current_pos)
+                        .cmp(&hex_distance(&b.pos, &actor.current_pos))
+                });
+                info!("sorted entities: {entities:?}");
+
+                for e in entities {
+                    if let Ok((_, mut edible)) = target_query.get_mut(e.entity) {
+                        if edible.reserved_by.is_none() {
+                            edible.reserved_by = Some(this_entity.clone());
+                            actor.forage_target = Some(e.entity);
+                            actor.move_target = Some(e.pos.clone());
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 pub fn idle_action_system(
@@ -150,7 +240,7 @@ pub fn idle_action_system(
             // TODO 如果进入食物链捕食者视野范围，则进入逃离模式
             // 如果进入饥饿临界值，进入觅食状态
             if actor.satiety <= 5000 {
-                actor.state = ActorState::Seeking;
+                actor.state = ActorState::Foraging;
                 commands.trigger(ctx.failure());
                 continue;
             }
@@ -189,7 +279,7 @@ pub fn idle_action_system(
                 partition.is_valid_position(cell) && !partition.is_obstacle(cell)
             };
             // 获取周边可以同行的地块集合
-            let neighbours: Vec<HexMapPosition> = get_neighbours(actor.current_pos.into())
+            let neighbours: Vec<HexMapPosition> = get_neighbours(&actor.current_pos.into())
                 .into_iter()
                 .filter(is_valid)
                 .collect();
@@ -290,7 +380,7 @@ fn dynamic_obstacle_risk(
     }
 
     // 2. 检查相邻位置的实体密度
-    for neighbour in get_neighbours(*target) {
+    for neighbour in get_neighbours(target) {
         let entities = partition.entities_at(&neighbour);
         let count = entities
             .into_iter()

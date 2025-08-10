@@ -1,9 +1,13 @@
+use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
 use bevy::render::render_resource::{AsBindGroup, ShaderRef};
 use bevy::sprite::Material2d;
+use bevy_egui::egui::ahash::{HashMap, HashMapExt};
+
+use crate::core::components::EntityType;
 
 /// 六边形网格坐标, x,y为奇行偏移坐标，q,r,s为立方体坐标
-#[derive(Component, Debug, Default, Clone, Copy, PartialEq)]
+#[derive(Component, Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct HexMapPosition {
     pub x: i32,
     pub y: i32,
@@ -91,7 +95,7 @@ pub fn world_to_grid(_pos: &Vec3, _hex_size: f32) -> HexMapPosition {
 }
 
 /// 计算两个六边形之间的距离
-pub fn hex_distance(a: HexMapPosition, b: HexMapPosition) -> i32 {
+pub fn hex_distance(a: &HexMapPosition, b: &HexMapPosition) -> i32 {
     let dx = b.x - a.x;
     let dy = b.y - a.y;
     (dx.abs() + (dx + dy).abs() + dy.abs()) / 2
@@ -107,18 +111,26 @@ pub const CUBE_DIRECTIONS: [IVec3; 6] = [
     IVec3::new(0, -1, 1), // 右下 → 东南
 ];
 
-pub fn get_neighbours(pos: HexMapPosition) -> Vec<HexMapPosition> {
+pub fn get_neighbours(pos: &HexMapPosition) -> Vec<HexMapPosition> {
     CUBE_DIRECTIONS
         .iter()
         .map(|dir| pos.clone().add_cube_coord(dir))
         .collect()
 }
 
+#[derive(Debug, Resource, Clone, Eq, PartialEq, Hash)]
+pub struct EntityWithCoord {
+    pub entity: Entity,
+    pub pos: HexMapPosition,
+}
+
 /// 空间分区系统
 #[derive(Debug, Resource)]
 pub struct SpatialPartition {
-    pub cell_entity: Entity,
-    pub entities: Vec<Vec<Entity>>, //在此格内的实体
+    pub cell_entity: Vec<Entity>,
+    pub ground_entities: Vec<HashSet<Entity>>, //在此格内的地表实体
+    pub other_entities: Vec<HashSet<Entity>>,  //在此格内的实体
+    pub entities_map: HashMap<EntityType, HashSet<EntityWithCoord>>,
     pub config: HexGridConfig,
 }
 
@@ -126,11 +138,13 @@ impl SpatialPartition {
     pub fn new(config: HexGridConfig) -> Self {
         let capacity = config.width * config.height;
         let mut partitions = Vec::with_capacity(capacity);
-        partitions.resize_with(capacity, Vec::new);
+        partitions.resize_with(capacity, HashSet::new);
 
         Self {
-            cell_entity: Entity::PLACEHOLDER.entity(),
-            entities: partitions,
+            cell_entity: Vec::with_capacity(capacity),
+            ground_entities: partitions.clone(),
+            other_entities: partitions,
+            entities_map: HashMap::new(),
             config,
         }
     }
@@ -162,13 +176,51 @@ impl SpatialPartition {
     }
 
     /// 添加实体到分区
-    pub fn insert(&mut self, entity: Entity, pos: HexMapPosition) {
-        let index = self.get_index(&pos);
-        self.entities[index].push(entity);
+    pub fn insert_cache_entity(
+        &mut self,
+        entity: Entity,
+        pos: &HexMapPosition,
+        entity_type: EntityType,
+    ) {
+        let index = self.get_index(pos);
+        match entity_type {
+            EntityType::Cell => {
+                self.cell_entity.push(entity);
+            }
+            EntityType::Grass => {
+                self.ground_entities[index].insert(entity);
+                self.entities_map
+                    .entry(entity_type)
+                    .or_insert_with(|| HashSet::new())
+                    .insert(EntityWithCoord {
+                        entity,
+                        pos: pos.clone(),
+                    });
+            }
+            _ => {
+                self.other_entities[index].insert(entity);
+                self.entities_map
+                    .entry(entity_type)
+                    .or_insert_with(|| HashSet::new())
+                    .insert(EntityWithCoord {
+                        entity,
+                        pos: pos.clone(),
+                    });
+            }
+        }
     }
 
     pub fn entities_at(&self, pos: &HexMapPosition) -> Vec<Entity> {
-        vec![]
+        let index = self.get_index(pos);
+        let mut result = self.ground_entities[index].clone();
+        result.extend(self.other_entities[index].clone());
+        return result.into_iter().collect::<Vec<_>>();
+    }
+
+    pub fn entities_by_type(&self, entity_type: &EntityType) -> Vec<EntityWithCoord> {
+        self.entities_map
+            .get(entity_type)
+            .map_or(Vec::new(), |e| e.clone().into_iter().collect::<Vec<_>>())
     }
 
     /// 查询附近实体
@@ -177,7 +229,8 @@ impl SpatialPartition {
 
         for dy in -radius..=radius {
             for dx in -radius..=radius {
-                if hex_distance(center, HexMapPosition::new(center.x + dx, center.y + dy)) <= radius
+                if hex_distance(&center, &HexMapPosition::new(center.x + dx, center.y + dy))
+                    <= radius
                 {
                     let pos = HexMapPosition::new(center.x + dx, center.y + dy);
                     if pos.x >= 0
@@ -186,7 +239,7 @@ impl SpatialPartition {
                         && pos.y < self.config.height as i32
                     {
                         let index = self.get_index(&pos);
-                        results.extend(&self.entities[index]);
+                        results.extend(&self.other_entities[index]);
                     }
                 }
             }
@@ -240,7 +293,7 @@ mod tests {
     fn test_hex_distance() {
         let a = HexMapPosition::new(0, 0);
         let b = HexMapPosition::new(3, 2);
-        assert_eq!(hex_distance(a, b), 3);
+        assert_eq!(hex_distance(&a, &b), 3);
     }
 
     #[test]
@@ -254,7 +307,7 @@ mod tests {
         let mut partition = SpatialPartition::new(config);
         let entity = Entity::from_raw(0);
 
-        partition.insert(entity, HexMapPosition::new(5, 5));
+        partition.insert_cache_entity(entity, &HexMapPosition::new(5, 5), EntityType::Rabbit);
         let results = partition.query(HexMapPosition::new(5, 5), 2);
 
         assert!(results.contains(&entity));

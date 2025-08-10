@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use crate::{
-    ai::{get_ai_behave_tree, AnimalActorBoard, FrameCounter},
+    ai::{AnimalActorBoard, FrameCounter, get_ai_behave_tree},
     core::{
         components::EntityType,
         hex_grid::{HexMapPosition, SpatialPartition},
@@ -87,13 +87,8 @@ pub fn spawn_entity(
     config: &EntityConfig,
     sprite_manager: &ResMut<SpriteManager>,
     partition: &mut ResMut<SpatialPartition>,
-    root: &Entity,
+    parent: &Entity,
 ) {
-    let parent = commands
-        .spawn((OnMapEntitiesRoot, Transform::from_xyz(0.0, 0.0, 2.0)))
-        .insert(ChildOf(*root))
-        .id();
-
     let mut center = partition.grid_to_world(&config.pos);
     center.z = 2.0;
 
@@ -150,9 +145,9 @@ pub fn spawn_entity(
         _ => {}
     };
 
-    cmd.insert(ChildOf(parent));
+    cmd.insert(ChildOf(*parent));
 
-    partition.insert(cmd.id(), config.pos.into());
+    partition.insert_cache_entity(cmd.id(), &config.pos.into(), config.entity_type.clone());
 
     // // 添加基础组件
     // entity.insert_bundle((
@@ -221,13 +216,15 @@ pub fn spawn_entities_system(
 ) {
     commands.insert_resource(FrameCounter::default());
     let level_config = level_data.get(&level_loader.level_data).unwrap();
+
+    let root_parent = root.single().unwrap();
+
+    let parent = commands
+        .spawn((OnMapEntitiesRoot, Transform::from_xyz(0.0, 0.0, 2.0)))
+        .insert(ChildOf(root_parent))
+        .id();
+
     for cfg in level_config.entities.iter() {
-        spawn_entity(
-            &mut commands,
-            cfg,
-            &sprite_manager,
-            &mut partition,
-            &root.single().unwrap(),
-        );
+        spawn_entity(&mut commands, cfg, &sprite_manager, &mut partition, &parent);
     }
 }

@@ -15,34 +15,27 @@ pub struct Render {
 }
 
 /// 实体类型标记
-#[derive(Component, Debug, Deserialize, Serialize, Clone, Default)]
+#[derive(Component, Debug, Deserialize, Serialize, Clone, Default, Eq, PartialEq, Hash)]
 #[serde(rename_all = "lowercase")]
 #[serde(tag = "type", content = "species")]
 pub enum EntityType {
+    Cell,
     #[default]
     Grass,
     Rabbit,
     Fox,
-    Animal(Species),
 }
 
 impl fmt::Display for EntityType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let s = match self {
+            EntityType::Cell => "Map_cell",
             EntityType::Grass => "Grass_normal",
             EntityType::Rabbit => "Rabbit",
             EntityType::Fox => "Fox",
-            EntityType::Animal(_) => "Animal",
         };
         write!(f, "{}", s)
     }
-}
-
-/// 动物种类
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub enum Species {
-    Fox,
-    Rabbit,
 }
 
 /// 能量存储

@@ -1,4 +1,5 @@
 //! 网格系统实现
+use crate::core::components::EntityType;
 use crate::scenes::GameSceneRoot;
 
 use super::hex_grid::*;
@@ -58,7 +59,7 @@ pub fn render_grid_system(
                 .insert(ChildOf(parent))
                 .id();
             // 将cell存入partition对应坐标下数组的第一个元素
-            partition.insert(cell, pos);
+            partition.insert_cache_entity(cell, &pos, EntityType::Cell);
         }
     }
 

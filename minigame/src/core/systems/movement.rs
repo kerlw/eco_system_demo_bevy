@@ -37,10 +37,10 @@ pub fn pathfinding_system(
     _config: Res<HexGridConfig>,
 ) {
     for (current_pos, mut move_to, vision_range) in &mut query {
-        if move_to.path.is_empty() || hex_distance(*current_pos, move_to.target) > 1 {
+        if move_to.path.is_empty() || hex_distance(current_pos, &move_to.target) > 1 {
             // 检查目标是否在视野范围内
             if let Some(vision_range) = vision_range {
-                if hex_distance(*current_pos, move_to.target) > vision_range.radius {
+                if hex_distance(current_pos, &move_to.target) > vision_range.radius {
                     continue;
                 }
             }
@@ -95,7 +95,7 @@ pub fn movement_system(
 
             // 检查目标是否在视野范围内
             if let Some(vision_range) = vision_range {
-                if hex_distance(*position, move_to.target) > vision_range.radius {
+                if hex_distance(&position, &move_to.target) > vision_range.radius {
                     commands.entity(entity).remove::<MoveTo>();
                     continue;
                 }
