@@ -10,6 +10,7 @@ use crate::{
     level::{config::LevelConfigAsset, loader::*},
 };
 use bevy::prelude::*;
+use bevy_egui::PrimaryEguiContext;
 
 #[derive(Component)]
 #[require(Visibility::default())]
@@ -35,6 +36,7 @@ pub fn setup_game_scene(
     // 摄像机
     commands.spawn((
         GameSceneRoot,
+        PrimaryEguiContext,
         Transform::default(),
         children![(
             Camera2d::default(),
