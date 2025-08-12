@@ -53,6 +53,8 @@ fn setup_hud(
                 height: Val::Percent(15.0),
                 position_type: PositionType::Absolute,
                 padding: UiRect::all(Val::Px(10.0)),
+                justify_content: JustifyContent::SpaceBetween,
+                align_content: AlignContent::Center,
                 flex_direction: FlexDirection::Row,
                 align_items: AlignItems::Center,
                 ..Default::default()

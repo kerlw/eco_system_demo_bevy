@@ -16,6 +16,9 @@ use bevy_egui::PrimaryEguiContext;
 #[require(Visibility::default())]
 pub struct GameSceneRoot;
 
+#[derive(Component)]
+pub struct GameSceneUIRoot;
+
 /// 初始化测试场景
 pub fn setup_game_scene(
     mut commands: Commands,
@@ -50,6 +53,17 @@ pub fn setup_game_scene(
             CameraController::default(),
         )],
     ));
+
+    commands.spawn((
+        GameSceneUIRoot,
+        Node {
+            width: Val::Percent(100.0),
+            height: Val::Percent(100.0),
+            display: Display::Flex,
+            ..Default::default()
+        },
+        GlobalZIndex(1),
+    ));
 }
 
 /// 生成玩家实体
@@ -57,8 +71,16 @@ pub fn spawn_player(mut commands: Commands) {
     commands.spawn((HexMapPosition::new(0, 0), Player));
 }
 
-pub fn despawn_scene(mut commands: Commands, query: Query<Entity, With<GameSceneRoot>>) {
+pub fn despawn_scene(
+    mut commands: Commands,
+    query: Query<Entity, With<GameSceneRoot>>,
+    ui_query: Query<Entity, With<GameSceneUIRoot>>,
+) {
     if let Ok(entity) = query.single() {
+        commands.entity(entity).despawn();
+    }
+
+    if let Ok(entity) = ui_query.single() {
         commands.entity(entity).despawn();
     }
 }

@@ -53,6 +53,10 @@ pub fn setup_sprite_res(
 
 impl SpriteManager {
     pub fn get_sprite_by_name(&self, name: &str) -> Sprite {
+        return self.get_sprite_by_name_and_size(name, Vec2::new(64.0, 64.0));
+    }
+
+    pub fn get_sprite_by_name_and_size(&self, name: &str, size: Vec2) -> Sprite {
         let cfg = self.config.sprites_map.get(name).unwrap();
         Sprite {
             image: self.texture.clone(),
@@ -60,8 +64,19 @@ impl SpriteManager {
                 layout: self.texture_atlas_layouts.clone(),
                 index: cfg.index,
             }),
-            custom_size: Some(Vec2::new(64.0, 64.0)),
+            custom_size: Some(size),
             ..Default::default()
         }
+    }
+
+    pub fn create_image_node_by_name(&self, name: &str) -> ImageNode {
+        let cfg = self.config.sprites_map.get(name).unwrap();
+        ImageNode::from_atlas_image(
+            self.texture.clone(),
+            TextureAtlas {
+                layout: self.texture_atlas_layouts.clone(),
+                index: cfg.index,
+            },
+        )
     }
 }
