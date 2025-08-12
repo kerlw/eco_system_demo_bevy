@@ -33,7 +33,7 @@ This is a project for an ecosystem simulation game developed using Rust and the 
 ### System Requirements
 
 - Rust 1.60+
-- Bevy engine
+- Bevy engine 0.16.1
 - Cargo build tool
 
 ### Building the Project
