@@ -243,6 +243,19 @@ pub fn forage_action_system(
             // 有觅食目标的时候，向目标移动
             if let Some(move_target) = actor.move_target {
                 let pref = partition.as_ref();
+                // 首先处理觅食者就站在食物上的情况
+                if actor.current_pos.eq(&move_target) {
+                    do_eat_and_despawn_food_entity(
+                        &mut commands,
+                        &target_query,
+                        &mut partition,
+                        action.food_entity_type.clone(),
+                        &mut actor,
+                    );
+                    commands.trigger(ctx.failure());
+                    continue;
+                }
+
                 if let Some((path, _)) = astar(
                     &actor.current_pos,
                     |p| {
@@ -265,20 +278,13 @@ pub fn forage_action_system(
                             &mut partition,
                         );
                         if next_pos == move_target {
-                            let food = actor.do_eat();
-                            let food_entity = food.entity.clone();
-                            warn!(
-                                "forage action: Success to forage! start {partition:?} removing {food_entity:?}"
-                            );
-                            partition.remove_entity(
-                                food.entity,
-                                &food.pos,
+                            do_eat_and_despawn_food_entity(
+                                &mut commands,
+                                &target_query,
+                                &mut partition,
                                 action.food_entity_type.clone(),
+                                &mut actor,
                             );
-                            warn!("forage action: Success to forage! end {partition:?}");
-                            commands
-                                .entity(target_query.get(food.entity).unwrap().0)
-                                .despawn();
                             commands.trigger(ctx.failure());
                             continue;
                         }
@@ -286,6 +292,24 @@ pub fn forage_action_system(
                 }
             }
         }
+    }
+}
+
+// 执行吃掉食物并清理食物实体的逻辑
+fn do_eat_and_despawn_food_entity(
+    commands: &mut Commands,
+    target_query: &Query<(Entity, &mut EdibleEntity)>,
+    partition: &mut SpatialPartition,
+    food_type: EntityType,
+    actor: &mut AnimalActorBoard,
+) {
+    // 修正AnimalActorBoard的数据
+    let food = actor.do_eat();
+    // 从SpatialPartition移除食物，移除实体的时候要先把数据从SpatialPartition中移除，才能移除实体。
+    partition.remove_entity(food.entity, &food.pos, food_type);
+    // 销毁食物对应的实体
+    if let Ok((entity, _)) = target_query.get(food.entity) {
+        commands.entity(entity).despawn();
     }
 }
 
