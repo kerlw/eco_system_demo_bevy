@@ -1,3 +1,5 @@
+use std::f32::consts::PI;
+
 use crate::core::entities::{OnMapEntitiesRoot, spawn_entity};
 use crate::core::hex_grid::SpatialPartition;
 use crate::core::systems::hex_grid::{HexMapPosition, HexagonBorderMaterial};
@@ -5,8 +7,6 @@ use crate::level::config::EntityConfig;
 use crate::scenes::scene_selector::SceneSystemSet;
 use crate::sprite::sprite_mgr;
 use crate::ui::{CardSelectedMarker, EntityCardInfo, SelectedCardHolder};
-use bevy::ecs::relationship::RelationshipSourceCollection;
-use bevy::ecs::resource;
 use bevy::input::mouse::MouseButton;
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
@@ -129,7 +129,7 @@ pub fn map_cell_click_system(
     card_holder: Res<SelectedCardHolder>,
     mut partition: ResMut<SpatialPartition>,
     mut commands: Commands,
-    mut sprite_mgr: ResMut<sprite_mgr::SpriteManager>,
+    sprite_mgr: ResMut<sprite_mgr::SpriteManager>,
     mut materials: ResMut<Assets<HexagonBorderMaterial>>,
     colors: Res<MapCellColors>,
     root_q: Query<Entity, With<OnMapEntitiesRoot>>,
@@ -181,6 +181,8 @@ pub fn map_cell_click_system(
                                 cell_holder.selected = None;
                                 materials.get_mut(material.0.id()).map(|m| {
                                     m.color = colors.normal.to_linear();
+                                    m.border_color = Color::srgb(1.0, 1.0, 1.0).to_linear();
+                                    m.border_width = 0.05;
                                 });
                             }
                         }
@@ -192,7 +194,7 @@ pub fn map_cell_click_system(
                         commands
                             .entity(entity)
                             .insert(MapCellSelectedMarker {
-                                timer: Timer::from_seconds(0.8, TimerMode::Repeating),
+                                timer: Timer::from_seconds(2., TimerMode::Repeating),
                             })
                             .insert(ClickEffect {
                                 timer: Timer::from_seconds(
@@ -304,17 +306,16 @@ pub fn selected_effect_system(
     )>,
 ) {
     for (mut selected, material) in query.iter_mut() {
-        info!("selected_effect_system");
         selected.timer.tick(time.delta());
 
         // 选中状态闪烁效果
-        let blink_factor = (selected.timer.elapsed_secs() * 5.).sin().abs();
-        let color = colors.selected.to_srgba() * (0.3 + 0.7 * blink_factor);
+        let blink_factor = (selected.timer.elapsed_secs() * 0.5 * PI).sin().abs();
+        let color = colors.selected.to_srgba() * (0.5 + 0.5 * blink_factor);
 
         materials.get_mut(material.0.id()).map(|m| {
             m.color = color.into();
-            // border_color: AQUA.into(),
-            // border_width: 0.1,
+            m.border_color = Color::srgb(0.00, 1.00, 1.00).into();
+            m.border_width = 0.1;
         });
     }
 }
