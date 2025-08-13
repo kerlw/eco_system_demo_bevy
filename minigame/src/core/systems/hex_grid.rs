@@ -1,3 +1,5 @@
+use bevy::ecs::relationship::RelationshipSourceCollection;
+use bevy::math::ops::floor;
 use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
 use bevy::render::render_resource::{AsBindGroup, ShaderRef};
@@ -134,6 +136,8 @@ pub struct SpatialPartition {
     pub config: HexGridConfig,
 }
 
+const SQRT3: f32 = 1.7320508;
+
 impl SpatialPartition {
     pub fn new(config: HexGridConfig) -> Self {
         let capacity = config.width * config.height;
@@ -141,7 +145,7 @@ impl SpatialPartition {
         partitions.resize_with(capacity, HashSet::new);
 
         Self {
-            cell_entity: Vec::with_capacity(capacity),
+            cell_entity: vec![Entity::PLACEHOLDER; capacity],
             ground_entities: partitions.clone(),
             other_entities: partitions,
             entities_map: HashMap::new(),
@@ -160,6 +164,10 @@ impl SpatialPartition {
     pub fn is_obstacle(&self, _pos: &HexMapPosition) -> bool {
         //TODO : 实体检查
         return false;
+    }
+
+    pub fn get_cell_by_pos(&self, pos: &HexMapPosition) -> Entity {
+        self.cell_entity[self.get_index(pos)]
     }
 
     pub fn get_valid_neighbours(&self, pos: &HexMapPosition) -> Vec<HexMapPosition> {
@@ -197,9 +205,35 @@ impl SpatialPartition {
     /// 将网格坐标转换为世界坐标
     pub fn grid_to_world(&self, pos: &IVec2) -> Vec3 {
         let hex_size = self.config.size;
-        let x = hex_size * f32::sqrt(3.0) * (pos.x as f32 + 0.5 * (pos.y as f32 % 2.0));
+        let x = hex_size * SQRT3 * (pos.x as f32 + 0.5 * (pos.y as f32 % 2.0));
         let y = hex_size * 1.5 * pos.y as f32;
         Vec3::new(x, y, 0.0)
+    }
+
+    pub fn world_to_grid(&self, pos: &Vec2) -> HexMapPosition {
+        let hex_size = self.config.size;
+        let x = floor((pos.x + SQRT3 * hex_size * 0.5) / (hex_size * SQRT3)) as i32;
+        let y = floor((pos.y + hex_size * 0.5) / (hex_size * 1.5)) as i32;
+        let mut result = HexMapPosition::new(x, y);
+        let mut distance = self
+            .grid_to_world(&result.to_vec2())
+            .xy()
+            .distance(pos.clone());
+
+        let center = result.clone();
+        for offset in CUBE_DIRECTIONS {
+            let neighbour = center.clone().add_cube_coord(&offset);
+            let new_distance = self
+                .grid_to_world(&neighbour.to_vec2())
+                .xy()
+                .distance(pos.clone());
+            if new_distance < distance {
+                distance = new_distance;
+                result = neighbour;
+            }
+        }
+
+        return result;
     }
 
     /// 添加实体到分区
@@ -212,7 +246,7 @@ impl SpatialPartition {
         let index = self.get_index(pos);
         match entity_type {
             EntityType::Cell => {
-                self.cell_entity.push(entity);
+                self.cell_entity[index] = entity;
             }
             EntityType::Grass => {
                 self.ground_entities[index].insert(entity);

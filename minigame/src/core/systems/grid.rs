@@ -50,7 +50,7 @@ pub fn render_grid_system(
                     Mesh2d(shared_mesh.0.clone()),
                     Transform::from_translation(center),
                     MeshMaterial2d(materials.add(HexagonBorderMaterial {
-                        color: LIME.into(),
+                        color: Color::srgb(0.2, 0.2, 0.8).into(),
                         border_color: WHITE.into(),
                         border_width: 0.05,
                     })),

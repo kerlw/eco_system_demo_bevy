@@ -1,6 +1,9 @@
+use crate::core::hex_grid::SpatialPartition;
 use crate::core::systems::hex_grid::{HexMapPosition, HexagonBorderMaterial};
 use crate::scenes::scene_selector::SceneSystemSet;
 use crate::ui::SelectedCardHolder;
+use bevy::ecs::relationship::RelationshipSourceCollection;
+use bevy::ecs::resource;
 use bevy::input::mouse::MouseButton;
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
@@ -109,72 +112,106 @@ pub fn update_global_mouse_position_system(
 // 点击检测系统
 pub fn map_cell_click_system(
     interaction: Res<MapCellEffectConfig>,
+    camera_q: Query<(&Camera, &GlobalTransform)>,
     mouse: Res<ButtonInput<MouseButton>>,
     mouse_position: Res<GlobalMousePosition>,
     query: Query<(Entity, &Transform, &HexMapPosition)>,
     mut cell_holder: ResMut<SpecialMapCellHolder>,
     card_holder: Res<SelectedCardHolder>,
+    partition: Res<SpatialPartition>,
     mut commands: Commands,
 ) {
-    if !mouse.just_pressed(MouseButton::Left) {
-        return;
-    }
-
-    if !mouse_position.is_in_primary_window {
+    if !mouse.just_pressed(MouseButton::Left) || !mouse_position.is_in_primary_window {
         return;
     }
 
     let cursor_pos = mouse_position.pos;
+    // 利用camera的viewport_to_world_2d将鼠标位置坐标转换为视窗位置坐标
+    if let Ok((camera, cam_transform)) = camera_q.single() {
+        if let Ok(pos) = camera.viewport_to_world_2d(cam_transform, cursor_pos) {
+            let selected_card = card_holder.0.clone();
 
-    for (entity, transform, _) in query.iter() {
-        let distance = transform.translation.truncate().distance(cursor_pos);
-        if distance <= interaction.click_radius {
-            commands
-                .entity(entity)
-                .insert(MapCellSelectedMarker {
-                    timer: Timer::from_seconds(0.1, TimerMode::Once),
-                })
-                .insert(ClickEffect {
-                    timer: Timer::from_seconds(interaction.click_effect_duration, TimerMode::Once),
-                    scale: interaction.click_effect_scale,
-                });
-            break;
+            // 计算当前鼠标位置对应的地块坐标
+            let cell = partition.world_to_grid(&cursor_pos);
+            // 地块坐标在地图范围内
+            if partition.is_valid_position(&cell) {
+                if let Some(card) = selected_card { // 选择了卡片，则处理投放
+                } else { // 未选择卡片则处理选中地块
+                }
+            } else if selected_card.is_none() { // 不在地图范围内时，仅处理未选中卡片的情况，取消已经设置了selected的地块组件
+            }
         }
     }
+
+    // for (entity, transform, _) in query.iter() {
+    //     let distance = transform.translation.truncate().distance(cursor_pos);
+    //     if distance <= interaction.click_radius {
+    //         commands
+    //             .entity(entity)
+    //             .insert(MapCellSelectedMarker {
+    //                 timer: Timer::from_seconds(0.1, TimerMode::Once),
+    //             })
+    //             .insert(ClickEffect {
+    //                 timer: Timer::from_seconds(interaction.click_effect_duration, TimerMode::Once),
+    //                 scale: interaction.click_effect_scale,
+    //             });
+    //         break;
+    //     }
+    // }
 }
 
 // 悬停检测系统, 遍历所有的地图块效率太低。应当建立地图块的图元信息二维数组，进行精准定位计算
 pub fn hex_hover_system(
-    // mut commands: Commands,
-    interaction: Res<MapCellEffectConfig>,
+    mut commands: Commands,
     mouse_position: Res<GlobalMousePosition>,
     camera_q: Query<(&Camera, &GlobalTransform)>,
-    mut query: Query<
-        (Entity, &Transform, &MeshMaterial2d<HexagonBorderMaterial>),
-        With<HexMapPosition>,
-    >,
+    mut query: Query<(
+        Entity,
+        &MeshMaterial2d<HexagonBorderMaterial>,
+        &HexMapPosition,
+        Has<MapCellHoveredMarker>,
+    )>,
     colors: Res<MapCellColors>,
     mut materials: ResMut<Assets<HexagonBorderMaterial>>,
+    mut holder: ResMut<SpecialMapCellHolder>,
+    partition: Res<SpatialPartition>,
 ) {
     if !mouse_position.is_in_primary_window {
         return;
     }
+
     let cursor_pos = mouse_position.pos;
+    // 利用camera的viewport_to_world_2d将鼠标位置坐标转换为视窗位置坐标
     if let Ok((camera, cam_transform)) = camera_q.single() {
         if let Ok(pos) = camera.viewport_to_world_2d(cam_transform, cursor_pos) {
-            for (_entity, transform, material) in query.iter_mut() {
-                let distance = transform.translation.truncate().distance(pos);
-                let is_hovered = distance <= interaction.hover_radius;
+            // 获取与该位置最接近的HexMapPosition（可能是处于地图外的）
+            let cell = partition.world_to_grid(&pos);
 
-                if is_hovered {
-                    // commands.entity(entity).insert(Hovered);
+            // 已经存在hover的cell则判断是否和当前位置的cell相同，不同的时候则取消之前的hovered的cell
+            if let Some(hover_cell) = holder.hovered {
+                if let Ok((entity, material, pos, is_hovered)) = query.get_mut(hover_cell) {
+                    if pos.eq(&cell) {
+                        // 是当前地块hover直接返回
+                        return;
+                    } else if is_hovered {
+                        // is_hovered其实可以省略
+                        commands.entity(entity).remove::<MapCellHoveredMarker>();
+                        holder.hovered = None;
+                        materials.get_mut(material.0.id()).map(|m| {
+                            m.color = colors.normal.to_linear();
+                        });
+                    }
+                }
+            }
+
+            // 当前hover的MapHexPosition只有在地图内时，才将对应的cell设置为hovered
+            if partition.is_valid_position(&cell) {
+                let entity = partition.get_cell_by_pos(&cell);
+                if let Ok((entity, material, _, _)) = query.get_mut(entity) {
+                    commands.entity(entity).insert(MapCellHoveredMarker);
+                    holder.hovered = Some(entity);
                     materials.get_mut(material.0.id()).map(|m| {
                         m.color = colors.hovered.to_linear();
-                    });
-                } else {
-                    // // commands.entity(entity).remove::<Hovered>();
-                    materials.get_mut(material.0.id()).map(|m| {
-                        m.color = colors.normal.to_linear();
                     });
                 }
             }
@@ -251,7 +288,7 @@ impl Plugin for MapInteractionPlugin {
                 (
                     update_global_mouse_position_system,
                     (
-                        map_cell_click_system,
+                        map_cell_click_system.run_if(resource_changed::<ButtonInput<MouseButton>>),
                         hex_hover_system,
                         click_effect_system,
                         selected_effect_system,

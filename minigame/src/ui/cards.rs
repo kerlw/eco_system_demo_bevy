@@ -36,7 +36,7 @@ struct EntityCardInfo {
 struct CardSelectedMarker;
 
 #[derive(Resource, Default)]
-pub struct SelectedCardHolder(Option<Entity>);
+pub struct SelectedCardHolder(pub(crate) Option<Entity>);
 
 /// 卡片资源
 #[derive(Default, Resource)]
