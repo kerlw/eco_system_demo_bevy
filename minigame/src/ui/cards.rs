@@ -13,7 +13,7 @@ struct CardUIRoot;
 
 /// 实体卡片组件
 #[derive(Component, Default)]
-struct EntityCard {
+struct EntityCardInfo {
     pub entity_type: EntityType,
     pub cost: u32,
 }
@@ -33,10 +33,10 @@ struct EntityCard {
 
 // 选中状态Marker
 #[derive(Component)]
-struct Selected;
+struct CardSelectedMarker;
 
 #[derive(Resource, Default)]
-struct SelectedCard(Option<Entity>);
+pub struct SelectedCardHolder(Option<Entity>);
 
 /// 卡片资源
 #[derive(Default, Resource)]
@@ -51,7 +51,7 @@ pub struct EntityCardsPlugin;
 impl Plugin for EntityCardsPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<CardAssets>()
-            .insert_resource(SelectedCard::default())
+            .insert_resource(SelectedCardHolder::default())
             .add_systems(Startup, load_card_assets)
             .add_systems(
                 Update,
@@ -97,10 +97,9 @@ pub fn spawn_card_ui(
                 BackgroundColor(Color::srgba(0.45, 0.45, 0.45, 0.45).into()),
             ))
             .with_children(|root| {
-                info!("=====Spawn Card UI =====");
                 root.spawn((
                     Name::new("Card"),
-                    EntityCard {
+                    EntityCardInfo {
                         entity_type: EntityType::Grass,
                         cost: 20,
                     },
@@ -109,9 +108,10 @@ pub fn spawn_card_ui(
                         width: Val::Px(68.0),
                         height: Val::Px(100.0),
                         flex_direction: FlexDirection::Column,
+                        overflow: Overflow::clip(),
                         ..Default::default()
                     },
-                    BorderRadius::all(Val::Px(6.)),
+                    BorderRadius::all(Val::Px(5.5)),
                     Outline {
                         width: Val::Px(5.),
                         offset: Val::ZERO,
@@ -176,25 +176,27 @@ fn load_card_assets(asset_server: Res<AssetServer>, mut card_assets: ResMut<Card
 
 fn handle_card_onclick(
     mut commands: Commands,
-    mut selected_card: ResMut<SelectedCard>,
+    mut selected_card: ResMut<SelectedCardHolder>,
     card_query: Query<
         (Entity, Ref<Interaction>, Has<CardSelectedMarker>),
-        (With<EntityCard>, Changed<Interaction>),
+        (With<EntityCardInfo>, Changed<Interaction>),
     >,
-    mut outline_query: Query<&mut Outline, With<EntityCard>>,
+    mut outline_query: Query<&mut Outline, With<EntityCardInfo>>,
 ) {
     for (card_entity, interaction, is_selected) in card_query {
         if interaction.eq(&Interaction::Pressed) {
             if is_selected {
-                // 本来就选中了，无需处理
+                // 本来就选中了，去除选中效果
+                commands.entity(card_entity).remove::<CardSelectedMarker>();
+                if let Ok(mut outline) = outline_query.get_mut(card_entity) {
+                    outline.color = Color::NONE;
+                }
                 return;
             }
 
             if selected_card.0.is_some() {
                 let entity = selected_card.0.unwrap();
-                commands
-                    .entity(entity.clone())
-                    .remove::<CardSelectedMarker>();
+                commands.entity(entity).remove::<CardSelectedMarker>();
                 if let Ok(mut outline) = outline_query.get_mut(entity) {
                     outline.color = Color::NONE;
                 }
@@ -207,15 +209,4 @@ fn handle_card_onclick(
             commands.entity(card_entity).insert(CardSelectedMarker);
         }
     }
-}
-
-/// 选中标记组件
-#[derive(Component)]
-pub struct CardSelectedMarker;
-
-/// 实体属性组件
-#[derive(Component)]
-pub struct EntityProperties {
-    pub entity_type: String,
-    pub health: f32,
 }
