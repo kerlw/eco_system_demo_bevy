@@ -25,7 +25,7 @@ pub fn udpate_board_state_system(
     if f_counter.counter % 10 == 0 {
         for mut board in &mut query {
             board.satiety -= floor(f_counter.elpased * board.decay_faction * 100f32) as i32;
-            info!("satiety:{}", board.satiety);
+            // info!("satiety:{}", board.satiety);
         }
 
         f_counter.reset();

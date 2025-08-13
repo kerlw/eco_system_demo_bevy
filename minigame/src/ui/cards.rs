@@ -13,7 +13,7 @@ struct CardUIRoot;
 
 /// 实体卡片组件
 #[derive(Component, Default)]
-struct EntityCardInfo {
+pub struct EntityCardInfo {
     pub entity_type: EntityType,
     pub cost: u32,
 }
@@ -33,7 +33,7 @@ struct EntityCardInfo {
 
 // 选中状态Marker
 #[derive(Component)]
-struct CardSelectedMarker;
+pub struct CardSelectedMarker;
 
 #[derive(Resource, Default)]
 pub struct SelectedCardHolder(pub(crate) Option<Entity>);

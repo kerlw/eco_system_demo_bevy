@@ -1,7 +1,10 @@
+use crate::core::entities::{OnMapEntitiesRoot, spawn_entity};
 use crate::core::hex_grid::SpatialPartition;
 use crate::core::systems::hex_grid::{HexMapPosition, HexagonBorderMaterial};
+use crate::level::config::EntityConfig;
 use crate::scenes::scene_selector::SceneSystemSet;
-use crate::ui::SelectedCardHolder;
+use crate::sprite::sprite_mgr;
+use crate::ui::{CardSelectedMarker, EntityCardInfo, SelectedCardHolder};
 use bevy::ecs::relationship::RelationshipSourceCollection;
 use bevy::ecs::resource;
 use bevy::input::mouse::MouseButton;
@@ -65,7 +68,7 @@ impl Default for MapCellEffectConfig {
         Self {
             click_radius: 43.3,
             hover_radius: 43.3,
-            click_effect_duration: 0.3,
+            click_effect_duration: 0.5,
             click_effect_scale: 1.2,
             particle_speed: 200.0,
             particle_count: 8,
@@ -113,13 +116,23 @@ pub fn update_global_mouse_position_system(
 pub fn map_cell_click_system(
     interaction: Res<MapCellEffectConfig>,
     camera_q: Query<(&Camera, &GlobalTransform)>,
+    card_q: Query<&EntityCardInfo, With<CardSelectedMarker>>,
     mouse: Res<ButtonInput<MouseButton>>,
     mouse_position: Res<GlobalMousePosition>,
-    query: Query<(Entity, &Transform, &HexMapPosition)>,
+    cell_q: Query<(
+        Entity,
+        &HexMapPosition,
+        &MeshMaterial2d<HexagonBorderMaterial>,
+        Has<MapCellSelectedMarker>,
+    )>,
     mut cell_holder: ResMut<SpecialMapCellHolder>,
     card_holder: Res<SelectedCardHolder>,
-    partition: Res<SpatialPartition>,
+    mut partition: ResMut<SpatialPartition>,
     mut commands: Commands,
+    mut sprite_mgr: ResMut<sprite_mgr::SpriteManager>,
+    mut materials: ResMut<Assets<HexagonBorderMaterial>>,
+    colors: Res<MapCellColors>,
+    root_q: Query<Entity, With<OnMapEntitiesRoot>>,
 ) {
     if !mouse.just_pressed(MouseButton::Left) || !mouse_position.is_in_primary_window {
         return;
@@ -132,36 +145,72 @@ pub fn map_cell_click_system(
             let selected_card = card_holder.0.clone();
 
             // 计算当前鼠标位置对应的地块坐标
-            let cell = partition.world_to_grid(&cursor_pos);
+            let cell_pos = partition.world_to_grid(&pos);
             // 地块坐标在地图范围内
-            if partition.is_valid_position(&cell) {
-                if let Some(card) = selected_card { // 选择了卡片，则处理投放
-                } else { // 未选择卡片则处理选中地块
+            if partition.is_valid_position(&cell_pos) {
+                if let Some(card) = selected_card {
+                    if let Ok(card_info) = card_q.get(card) {
+                        let parent = root_q.single().unwrap();
+                        // 选择了卡片，则处理投放
+                        spawn_entity(
+                            &mut commands,
+                            &EntityConfig {
+                                entity_type: card_info.entity_type.clone(),
+                                pos: cell_pos.to_vec2(),
+                                health: None,
+                                reproduction_rate: None,
+                                growth_rate: None,
+                                ..Default::default()
+                            },
+                            &sprite_mgr,
+                            &mut partition,
+                            &parent,
+                        );
+                    }
+                } else {
+                    if let Some(selected_cell) = cell_holder.selected {
+                        if let Ok((_, old_pos, material, is_selected)) = cell_q.get(selected_cell) {
+                            if old_pos.eq(&cell_pos) && is_selected {
+                                // TODO 可以尝试reset effect的timer
+                                return;
+                            } else {
+                                commands
+                                    .entity(selected_cell)
+                                    .remove::<MapCellSelectedMarker>()
+                                    .remove::<ClickEffect>();
+                                cell_holder.selected = None;
+                                materials.get_mut(material.0.id()).map(|m| {
+                                    m.color = colors.normal.to_linear();
+                                });
+                            }
+                        }
+                    }
+                    let entity = partition.get_cell_by_pos(&cell_pos);
+                    if let Ok((entity, _, _, _)) = cell_q.get(entity) {
+                        cell_holder.selected = Some(entity);
+                        // 未选择卡片则处理选中地块
+                        commands
+                            .entity(entity)
+                            .insert(MapCellSelectedMarker {
+                                timer: Timer::from_seconds(0.8, TimerMode::Repeating),
+                            })
+                            .insert(ClickEffect {
+                                timer: Timer::from_seconds(
+                                    interaction.click_effect_duration,
+                                    TimerMode::Once,
+                                ),
+                                scale: interaction.click_effect_scale,
+                            });
+                    }
                 }
             } else if selected_card.is_none() { // 不在地图范围内时，仅处理未选中卡片的情况，取消已经设置了selected的地块组件
             }
         }
     }
-
-    // for (entity, transform, _) in query.iter() {
-    //     let distance = transform.translation.truncate().distance(cursor_pos);
-    //     if distance <= interaction.click_radius {
-    //         commands
-    //             .entity(entity)
-    //             .insert(MapCellSelectedMarker {
-    //                 timer: Timer::from_seconds(0.1, TimerMode::Once),
-    //             })
-    //             .insert(ClickEffect {
-    //                 timer: Timer::from_seconds(interaction.click_effect_duration, TimerMode::Once),
-    //                 scale: interaction.click_effect_scale,
-    //             });
-    //         break;
-    //     }
-    // }
 }
 
 // 悬停检测系统, 遍历所有的地图块效率太低。应当建立地图块的图元信息二维数组，进行精准定位计算
-pub fn hex_hover_system(
+pub fn map_cell_hover_system(
     mut commands: Commands,
     mouse_position: Res<GlobalMousePosition>,
     camera_q: Query<(&Camera, &GlobalTransform)>,
@@ -259,8 +308,8 @@ pub fn selected_effect_system(
         selected.timer.tick(time.delta());
 
         // 选中状态闪烁效果
-        let blink_factor = (selected.timer.elapsed_secs() * 5.0).sin().abs();
-        let color = colors.selected.to_srgba() * (0.7 + 0.3 * blink_factor);
+        let blink_factor = (selected.timer.elapsed_secs() * 5.).sin().abs();
+        let color = colors.selected.to_srgba() * (0.3 + 0.7 * blink_factor);
 
         materials.get_mut(material.0.id()).map(|m| {
             m.color = color.into();
@@ -289,7 +338,7 @@ impl Plugin for MapInteractionPlugin {
                     update_global_mouse_position_system,
                     (
                         map_cell_click_system.run_if(resource_changed::<ButtonInput<MouseButton>>),
-                        hex_hover_system,
+                        map_cell_hover_system,
                         click_effect_system,
                         selected_effect_system,
                     ),

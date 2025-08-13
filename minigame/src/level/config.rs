@@ -31,7 +31,7 @@ pub enum LevelConfigAssetLoaderError {
 }
 
 /// 实体配置
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, Default)]
 pub struct EntityConfig {
     #[serde(rename = "type")]
     pub entity_type: EntityType,
