@@ -191,6 +191,7 @@ fn handle_card_onclick(
                 if let Ok(mut outline) = outline_query.get_mut(card_entity) {
                     outline.color = Color::NONE;
                 }
+                selected_card.0 = None;
                 return;
             }
 

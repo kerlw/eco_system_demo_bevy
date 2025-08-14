@@ -114,25 +114,25 @@ pub fn update_global_mouse_position_system(
 
 // 点击检测系统
 pub fn map_cell_click_system(
+    mut commands: Commands,
+    mouse: Res<ButtonInput<MouseButton>>,
+    mouse_position: Res<GlobalMousePosition>,
     interaction: Res<MapCellEffectConfig>,
     camera_q: Query<(&Camera, &GlobalTransform)>,
     card_q: Query<&EntityCardInfo, With<CardSelectedMarker>>,
-    mouse: Res<ButtonInput<MouseButton>>,
-    mouse_position: Res<GlobalMousePosition>,
     cell_q: Query<(
         Entity,
         &HexMapPosition,
         &MeshMaterial2d<HexagonBorderMaterial>,
         Has<MapCellSelectedMarker>,
     )>,
+    root_q: Query<Entity, With<OnMapEntitiesRoot>>,
     mut cell_holder: ResMut<SpecialMapCellHolder>,
     card_holder: Res<SelectedCardHolder>,
     mut partition: ResMut<SpatialPartition>,
-    mut commands: Commands,
     sprite_mgr: ResMut<sprite_mgr::SpriteManager>,
     mut materials: ResMut<Assets<HexagonBorderMaterial>>,
     colors: Res<MapCellColors>,
-    root_q: Query<Entity, With<OnMapEntitiesRoot>>,
 ) {
     if !mouse.just_pressed(MouseButton::Left) || !mouse_position.is_in_primary_window {
         return;
@@ -174,16 +174,14 @@ pub fn map_cell_click_system(
                                 // TODO 可以尝试reset effect的timer
                                 return;
                             } else {
-                                commands
-                                    .entity(selected_cell)
-                                    .remove::<MapCellSelectedMarker>()
-                                    .remove::<ClickEffect>();
-                                cell_holder.selected = None;
-                                materials.get_mut(material.0.id()).map(|m| {
-                                    m.color = colors.normal.to_linear();
-                                    m.border_color = Color::srgb(1.0, 1.0, 1.0).to_linear();
-                                    m.border_width = 0.05;
-                                });
+                                remove_cell_selected_mark(
+                                    &mut commands,
+                                    &mut cell_holder,
+                                    &mut materials,
+                                    &colors,
+                                    material,
+                                    selected_cell,
+                                );
                             }
                         }
                     }
@@ -205,10 +203,45 @@ pub fn map_cell_click_system(
                             });
                     }
                 }
-            } else if selected_card.is_none() { // 不在地图范围内时，仅处理未选中卡片的情况，取消已经设置了selected的地块组件
+            } else if selected_card.is_none() {
+                // 不在地图范围内时，仅处理未选中卡片的情况，取消已经设置了selected的地块组件
+                if let Some(selected_cell) = cell_holder.selected {
+                    if let Ok((_, _, material, is_selected)) = cell_q.get(selected_cell) {
+                        if is_selected {
+                            remove_cell_selected_mark(
+                                &mut commands,
+                                &mut cell_holder,
+                                &mut materials,
+                                &colors,
+                                material,
+                                selected_cell,
+                            );
+                        }
+                    }
+                }
             }
         }
     }
+}
+
+fn remove_cell_selected_mark(
+    commands: &mut Commands,
+    cell_holder: &mut SpecialMapCellHolder,
+    materials: &mut Assets<HexagonBorderMaterial>,
+    colors: &MapCellColors,
+    material: &MeshMaterial2d<HexagonBorderMaterial>,
+    selected_cell: Entity,
+) {
+    commands
+        .entity(selected_cell)
+        .remove::<MapCellSelectedMarker>()
+        .remove::<ClickEffect>();
+    cell_holder.selected = None;
+    materials.get_mut(material.0.id()).map(|m| {
+        m.color = colors.normal.to_linear();
+        m.border_color = Color::srgb(1.0, 1.0, 1.0).to_linear();
+        m.border_width = 0.05;
+    });
 }
 
 // 悬停检测系统, 遍历所有的地图块效率太低。应当建立地图块的图元信息二维数组，进行精准定位计算
@@ -295,6 +328,12 @@ pub fn click_effect_system(
     }
 }
 
+pub fn on_remove_click_effect_system(mut query: Query<&mut Transform, With<HexMapPosition>>) {
+    for mut trans in query.iter_mut() {
+        trans.scale = Vec3::splat(1.0);
+    }
+}
+
 // 选中状态系统
 pub fn selected_effect_system(
     time: Res<Time>,
@@ -342,6 +381,7 @@ impl Plugin for MapInteractionPlugin {
                         map_cell_hover_system,
                         click_effect_system,
                         selected_effect_system,
+                        on_remove_click_effect_system.run_if(any_component_removed::<ClickEffect>),
                     ),
                 )
                     .in_set(SceneSystemSet::GameSystems)
