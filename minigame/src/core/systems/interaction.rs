@@ -4,9 +4,10 @@ use crate::core::entities::{OnMapEntitiesRoot, spawn_entity};
 use crate::core::hex_grid::SpatialPartition;
 use crate::core::systems::hex_grid::{HexMapPosition, HexagonBorderMaterial};
 use crate::level::config::EntityConfig;
+use crate::scenes::LevelGold;
 use crate::scenes::scene_selector::SceneSystemSet;
 use crate::sprite::sprite_mgr;
-use crate::ui::{CardSelectedMarker, EntityCardInfo, SelectedCardHolder};
+use crate::ui::{CardSelectedMarker, EntityCardInfo, SelectedCardHolder, show_error_tips};
 use bevy::input::mouse::MouseButton;
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
@@ -113,6 +114,8 @@ pub fn update_global_mouse_position_system(
 }
 
 // 点击检测系统
+// 1. 有选中卡片的情况下，点击到地图单元上尝试放置选中的卡片对应的实体
+// 2. 无选中卡片的情况下，处理地图单元的选中/取消选中
 pub fn map_cell_click_system(
     mut commands: Commands,
     mouse: Res<ButtonInput<MouseButton>>,
@@ -133,6 +136,7 @@ pub fn map_cell_click_system(
     sprite_mgr: ResMut<sprite_mgr::SpriteManager>,
     mut materials: ResMut<Assets<HexagonBorderMaterial>>,
     colors: Res<MapCellColors>,
+    mut level_gold: ResMut<LevelGold>,
 ) {
     if !mouse.just_pressed(MouseButton::Left) || !mouse_position.is_in_primary_window {
         return;
@@ -143,13 +147,40 @@ pub fn map_cell_click_system(
     if let Ok((camera, cam_transform)) = camera_q.single() {
         if let Ok(pos) = camera.viewport_to_world_2d(cam_transform, cursor_pos) {
             let selected_card = card_holder.0.clone();
-
             // 计算当前鼠标位置对应的地块坐标
             let cell_pos = partition.world_to_grid(&pos);
             // 地块坐标在地图范围内
             if partition.is_valid_position(&cell_pos) {
                 if let Some(card) = selected_card {
                     if let Ok(card_info) = card_q.get(card) {
+                        // 清除当前的选中地块
+                        if let Some(selected_cell) = cell_holder.selected {
+                            if let Ok((_, _, material, is_selected)) = cell_q.get(selected_cell) {
+                                if is_selected {
+                                    remove_cell_selected_mark(
+                                        &mut commands,
+                                        &mut cell_holder,
+                                        &mut materials,
+                                        &colors,
+                                        material,
+                                        selected_cell,
+                                    );
+                                }
+                            }
+                        }
+
+                        if card_info.cost > level_gold.0 {
+                            show_error_tips(&mut commands, "金币不足!");
+                            return;
+                        }
+
+                        if !partition
+                            .check_entity_conflict_by_pos(card_info.entity_type.clone(), &cell_pos)
+                        {
+                            show_error_tips(&mut commands, "位置冲突!");
+                            return;
+                        }
+
                         let parent = root_q.single().unwrap();
                         // 选择了卡片，则处理投放
                         spawn_entity(
@@ -166,6 +197,7 @@ pub fn map_cell_click_system(
                             &mut partition,
                             &parent,
                         );
+                        level_gold.0 -= card_info.cost;
                     }
                 } else {
                     if let Some(selected_cell) = cell_holder.selected {
@@ -322,6 +354,7 @@ pub fn click_effect_system(
 
         transform.scale = Vec3::splat(current_scale);
 
+        // 完成后自己移除
         if effect.timer.finished() {
             commands.entity(entity).remove::<ClickEffect>();
         }

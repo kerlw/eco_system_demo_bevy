@@ -1,9 +1,11 @@
 use bevy::color::palettes::css::*;
 use bevy::prelude::*;
+use bevy::ui::widget::ImageNodeSize;
 use bevy::ui::{FlexDirection, PositionType, UiRect, Val};
 
 use crate::core::GameState;
 use crate::scenes::scene_selector::SceneSystemSet;
+use crate::scenes::{LevelGold, setup_game_scene};
 
 /// HUD根节点组件标记
 #[derive(Component)]
@@ -17,10 +19,14 @@ pub struct ScoreText;
 #[derive(Component)]
 pub struct TimeText;
 
+#[derive(Component)]
+pub struct GoldLable;
+
 /// HUD资源
 #[derive(Default, Resource)]
 pub struct HudAssets {
     pub font: Handle<Font>,
+    pub gold_img: Handle<Image>,
 }
 
 /// HUD界面系统插件
@@ -29,11 +35,20 @@ pub struct HudPlugin;
 impl Plugin for HudPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<HudAssets>()
-            .add_systems(OnEnter(GameState::Playing), setup_hud)
+            .add_systems(
+                OnEnter(GameState::Playing),
+                setup_hud.after(setup_game_scene),
+            )
             .add_systems(OnExit(GameState::Playing), cleanup_hud)
             .add_systems(
                 Update,
-                (update_score_text, update_time_text).in_set(SceneSystemSet::GameSystems),
+                (
+                    update_score_text,
+                    update_time_text,
+                    update_gold_label_text
+                        .run_if(resource_exists::<LevelGold>.and(resource_changed::<LevelGold>)),
+                )
+                    .in_set(SceneSystemSet::GameSystems),
             );
     }
 }
@@ -45,6 +60,7 @@ fn setup_hud(
 ) {
     // 加载字体资源
     hud_assets.font = asset_server.load("fonts/msyhbd.ttc");
+    hud_assets.gold_img = asset_server.load("textures/gold_coin.png");
 
     // 创建HUD根节点
     commands
@@ -75,6 +91,39 @@ fn setup_hud(
                     ..Default::default()
                 },
                 TextColor(WHITE.into()),
+            ));
+
+            parent.spawn((
+                Node {
+                    width: Val::Auto,
+                    height: Val::Auto,
+                    flex_direction: FlexDirection::Row,
+                    align_content: AlignContent::Center,
+                    align_items: AlignItems::Center,
+                    justify_content: JustifyContent::SpaceBetween,
+                    row_gap: Val::Px(5.0),
+                    ..Default::default()
+                },
+                children![
+                    (
+                        ImageNode::new(hud_assets.gold_img.clone()),
+                        Node {
+                            width: Val::Px(36.),
+                            height: Val::Px(36.),
+                            ..Default::default()
+                        },
+                    ),
+                    (
+                        Text::new("0"),
+                        TextFont {
+                            font: hud_assets.font.clone(),
+                            font_size: 24.0,
+                            ..Default::default()
+                        },
+                        TextColor(WHITE.into()),
+                        GoldLable,
+                    )
+                ],
             ));
 
             // 时间文本
@@ -111,6 +160,12 @@ fn update_time_text(mut query: Query<&mut Text, With<TimeText>>, time: Res<Time>
     for mut text in &mut query {
         // 更新时间文本
         *text = Text::new(format!("Time: {:.1}s", time.elapsed_secs()));
+    }
+}
+
+fn update_gold_label_text(mut query: Query<&mut Text, With<GoldLable>>, gold: Res<LevelGold>) {
+    for mut text in &mut query {
+        *text = Text::new(format!("{}", gold.0));
     }
 }
 

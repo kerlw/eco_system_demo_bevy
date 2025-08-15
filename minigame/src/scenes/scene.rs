@@ -19,6 +19,12 @@ pub struct GameSceneRoot;
 #[derive(Component)]
 pub struct GameSceneUIRoot;
 
+#[derive(Resource)]
+pub struct LevelGold(pub u32);
+
+#[derive(Resource)]
+pub struct LevelElapsed(pub f32);
+
 /// 初始化测试场景
 pub fn setup_game_scene(
     mut commands: Commands,
@@ -35,6 +41,8 @@ pub fn setup_game_scene(
 
     commands.insert_resource(config);
     commands.insert_resource(partition);
+    commands.insert_resource(LevelGold(cfg.init_gold));
+    commands.insert_resource(LevelElapsed(0.0));
 
     // 摄像机
     commands.spawn((

@@ -166,6 +166,19 @@ impl SpatialPartition {
         return false;
     }
 
+    pub fn check_entity_conflict_by_pos(
+        &self,
+        entity_type: EntityType,
+        pos: &HexMapPosition,
+    ) -> bool {
+        let index = self.get_index(pos);
+        match entity_type {
+            EntityType::Cell => false,
+            EntityType::Grass => self.ground_entities[index].is_empty(),
+            _ => self.other_entities[index].is_empty(),
+        }
+    }
+
     pub fn get_cell_by_pos(&self, pos: &HexMapPosition) -> Entity {
         self.cell_entity[self.get_index(pos)]
     }

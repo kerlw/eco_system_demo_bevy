@@ -10,6 +10,7 @@ use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_screen_diagnostics::{
     ScreenDiagnosticsPlugin, ScreenEntityDiagnosticsPlugin, ScreenFrameDiagnosticsPlugin,
 };
+use bevy_tweening::TweeningPlugin;
 use minigame::core::camera::CameraControlPlugin;
 use minigame::core::interaction::MapInteractionPlugin;
 use minigame::core::state::GameState;
@@ -19,6 +20,7 @@ use minigame::scenes::scene_selector::SceneSelectorPlugin;
 use minigame::sprite::sprite_mgr::SpriteManagerPlugin;
 use minigame::ui::cards::EntityCardsPlugin;
 use minigame::ui::hud::HudPlugin;
+use minigame::ui::{ErrorTipsPlugin, show_error_tips};
 
 fn close_window_on_esc(
     mut window_events: EventWriter<bevy::window::WindowCloseRequested>,
@@ -39,6 +41,11 @@ fn close_window_on_esc(
     }
 }
 
+fn test_function_on_space(mut commands: Commands) {
+    info!("space pressed");
+    show_error_tips(&mut commands, "this is a test event");
+}
+
 /// 创建应用并配置系统
 pub fn create_app() -> App {
     let mut app = App::new();
@@ -47,7 +54,9 @@ pub fn create_app() -> App {
             focused_mode: UpdateMode::Continuous,   // 窗口聚焦时持续运行
             unfocused_mode: UpdateMode::Continuous, // 窗口失焦时也持续运行
         })
+        .add_plugins(TweeningPlugin)
         .add_plugins(Material2dPlugin::<HexagonBorderMaterial>::default())
+        .add_plugins(ErrorTipsPlugin)
         .add_plugins(ScreenDiagnosticsPlugin::default())
         .add_plugins(ScreenFrameDiagnosticsPlugin)
         .add_plugins(ScreenEntityDiagnosticsPlugin)
@@ -73,6 +82,7 @@ pub fn create_app() -> App {
                 // minigame::core::systems::movement::movement_system,
                 // minigame::core::systems::state_machine::state_machine_system,
                 close_window_on_esc.run_if(input_just_pressed(KeyCode::Escape)),
+                test_function_on_space.run_if(input_just_pressed(KeyCode::Space)),
             ),
         );
 

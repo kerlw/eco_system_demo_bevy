@@ -43,6 +43,7 @@ pub struct SelectedCardHolder(pub(crate) Option<Entity>);
 pub struct CardAssets {
     pub font: Handle<Font>,
     pub card_bg: Handle<Image>,
+    pub gold_icon: Handle<Image>,
 }
 
 /// 实体卡片系统插件
@@ -101,7 +102,7 @@ pub fn spawn_card_ui(
                     Name::new("Card"),
                     EntityCardInfo {
                         entity_type: EntityType::Grass,
-                        cost: 20,
+                        cost: 10,
                     },
                     Interaction::default(),
                     Node {
@@ -148,19 +149,31 @@ pub fn spawn_card_ui(
                                     align_content: AlignContent::Center,
                                     align_items: AlignItems::Center,
                                     justify_content: JustifyContent::Center,
+                                    flex_direction: FlexDirection::Row,
+                                    row_gap: Val::Px(2.0),
                                     ..Default::default()
                                 },
                                 BackgroundColor(Color::srgba(0.184, 0.145, 0.741, 0.781)),
                                 BorderRadius::bottom(Val::Px(5.0)),
-                                children![(
-                                    Text::new("10"),
-                                    TextFont {
-                                        font: card_assets.font.clone(),
-                                        font_size: 28.0,
-                                        ..Default::default()
-                                    },
-                                    TextColor(Color::srgb(1.00, 0.76, 0.76).into()),
-                                )]
+                                children![
+                                    (
+                                        Text::new(format!("{}", 10)),
+                                        TextFont {
+                                            font: card_assets.font.clone(),
+                                            font_size: 20.0,
+                                            ..Default::default()
+                                        },
+                                        TextColor(Color::srgb(1.00, 0.76, 0.76).into()),
+                                    ),
+                                    (
+                                        ImageNode::new(card_assets.gold_icon.clone()),
+                                        Node {
+                                            width: Val::Px(20.0),
+                                            height: Val::Px(20.0),
+                                            ..Default::default()
+                                        }
+                                    ),
+                                ]
                             )
                         ]
                     )],
@@ -172,6 +185,7 @@ pub fn spawn_card_ui(
 fn load_card_assets(asset_server: Res<AssetServer>, mut card_assets: ResMut<CardAssets>) {
     card_assets.font = asset_server.load("fonts/msyh.ttc");
     card_assets.card_bg = asset_server.load("textures/card_bg.png");
+    card_assets.gold_icon = asset_server.load("textures/gold_coin.png");
 }
 
 fn handle_card_onclick(

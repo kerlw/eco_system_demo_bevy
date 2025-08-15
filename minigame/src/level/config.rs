@@ -12,7 +12,13 @@ pub struct LevelConfigAsset {
     pub name: String,
     pub size: UVec2,
     pub startup_camera_pos: Option<IVec2>, // 初始相机位置，可选项
+    #[serde(default = "default_init_gold")]
+    pub init_gold: u32,
     pub entities: Vec<EntityConfig>,
+}
+
+fn default_init_gold() -> u32 {
+    10
 }
 
 #[derive(Default)]
@@ -67,7 +73,10 @@ impl AssetLoader for LevelConfigAssetLoader {
 
 #[cfg(test)]
 mod tests {
-    use crate::{core::components::EntityType, level::config::{EntityConfig, LevelConfigAsset}};
+    use crate::{
+        core::components::EntityType,
+        level::config::{EntityConfig, LevelConfigAsset},
+    };
     use bevy::prelude::*;
 
     #[test]
@@ -87,7 +96,7 @@ mod tests {
             size: UVec2::new(1, 1),
             startup_camera_pos: Some(IVec2 { x: 2, y: 2 }),
             entities: vec![entity.clone()],
-        }; 
+        };
         println!("序列化字符串: {}", ron::ser::to_string(&cfg).unwrap());
         assert_eq!(
             "(type:(type:grass),pos:(1,1),health:None,reproduction_rate:None,growth_rate:None,hunger_rate:None,vision_range:None,speed:None)",
