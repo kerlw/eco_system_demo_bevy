@@ -1,6 +1,7 @@
 use crate::core::components::EntityType;
 use crate::core::hex_grid::{EntityWithCoord, HexMapPosition, hex_distance};
 use crate::core::systems::hex_grid::SpatialPartition;
+use crate::ui::Percentage;
 use bevy::color::palettes::css::*;
 use bevy::prelude::*;
 use bevy_behave::prelude::*;
@@ -107,6 +108,18 @@ pub enum ActorState {
     Foraging,
     Flee,
 }
+
+// #[derive(Percentage, Debug, Clone, Default, PartialEq)]
+// #[percentage(max = 10000)]
+#[derive(Component, Debug, Clone, Default, PartialEq, TypePath)]
+pub struct Satiety(pub i32);
+
+impl Percentage for Satiety {
+    fn value(&self) -> f32 {
+        self.0 as f32 / 10000.0
+    }
+}
+
 #[derive(Component, Debug, Clone, Default)]
 #[require(Transform)]
 pub struct AnimalActorBoard {
@@ -216,7 +229,7 @@ pub fn forage_action_system(
                 // actor.current_pos
                 let mut entities = partition.entities_by_type(&food_type);
                 if entities.is_empty() {
-                    warn!("forage_action: No {food_type:?} to forage!");
+                    // warn!("forage_action: No {food_type:?} to forage!");
                     actor.clear_forage_target();
                     continue;
                 }
@@ -226,12 +239,12 @@ pub fn forage_action_system(
                     hex_distance(&a.pos, &actor.current_pos)
                         .cmp(&hex_distance(&b.pos, &actor.current_pos))
                 });
-                info!("sorted entities: {entities:?}");
+                // info!("sorted entities: {entities:?}");
 
                 for e in entities {
                     if let Ok((_, mut edible)) = target_query.get_mut(e.entity) {
                         if edible.reserved_by.is_none() {
-                            warn!("forage_action: get forage {e:?}");
+                            // warn!("forage_action: get forage {e:?}");
                             edible.reserved_by = Some(this_entity.clone());
                             actor.set_forage_target(e);
                             break;
@@ -267,7 +280,7 @@ pub fn forage_action_system(
                     |p| hex_distance(p, &move_target),
                     |p| *p == move_target,
                 ) {
-                    info!("forage action: Path to forage target: {path:?}");
+                    // info!("forage action: Path to forage target: {path:?}");
                     if path.len() > 1 {
                         //move to
                         let next_pos = path[1];
@@ -347,7 +360,7 @@ pub fn idle_action_system(
                         // 将探索方向设置为ZERO在下面的逻辑中进行初始化
                         action.preference.direction = Vec3::ZERO;
                     } else {
-                        warn!("idle_action: idle...");
+                        // warn!("idle_action: idle...");
                         continue;
                     }
                 }
@@ -371,7 +384,7 @@ pub fn idle_action_system(
                 .collect();
             // 如果周围都不可通行，则随机漫步失败。
             if neighbours.is_empty() {
-                info!("random_walk failed! target: {:?}", actor.current_pos);
+                error!("random_walk failed! target: {:?}", actor.current_pos);
                 commands.trigger(ctx.failure()); //TODO 无法移动时直接失败可能对性能有影响
                 continue;
             }
@@ -403,7 +416,7 @@ pub fn idle_action_system(
                 if action.exploration.steps_remaining < 0 {
                     actor.state = ActorState::Idle;
                     actor.idle_counter = 0;
-                    info!("exploration finished.");
+                    // info!("exploration finished.");
                     continue;
                 }
 
@@ -430,7 +443,7 @@ pub fn idle_action_system(
                     candidates.push((neighbour, weight.max(0.01))); // 最小权重避免除零
                 }
                 if let Some(target_pos) = weighted_random_choice(&candidates) {
-                    info!("Next Move To: {:?}", &target_pos);
+                    // info!("Next Move To: {:?}", &target_pos);
                     move_actor_to_next_pos(&mut actor, &mut transform, &target_pos, &mut partition);
                 }
             }

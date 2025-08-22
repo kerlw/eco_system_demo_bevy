@@ -1,6 +1,6 @@
 use std::f32::consts::PI;
 
-use crate::core::entities::{OnMapEntitiesRoot, spawn_entity};
+use crate::core::entities::{OnMapEntitiesRoot, SharedBarMesh, spawn_entity};
 use crate::core::hex_grid::SpatialPartition;
 use crate::core::systems::hex_grid::{HexMapPosition, HexagonBorderMaterial};
 use crate::level::config::EntityConfig;
@@ -137,6 +137,7 @@ pub fn map_cell_click_system(
     mut materials: ResMut<Assets<HexagonBorderMaterial>>,
     colors: Res<MapCellColors>,
     mut level_gold: ResMut<LevelGold>,
+    bar_mesh: Res<SharedBarMesh>,
 ) {
     if !mouse.just_pressed(MouseButton::Left) || !mouse_position.is_in_primary_window {
         return;
@@ -183,6 +184,7 @@ pub fn map_cell_click_system(
 
                         let parent = root_q.single().unwrap();
                         // 选择了卡片，则处理投放
+                        // TODO 这里直接调用spawn会需要很多额外参数，可以考虑加入事件，避免这些参数冗余
                         spawn_entity(
                             &mut commands,
                             &EntityConfig {
@@ -194,6 +196,7 @@ pub fn map_cell_click_system(
                                 ..Default::default()
                             },
                             &sprite_mgr,
+                            &bar_mesh,
                             &mut partition,
                             &parent,
                         );

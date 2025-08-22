@@ -7,10 +7,12 @@ use bevy::window::PrimaryWindow;
 use bevy::winit::{UpdateMode, WinitSettings};
 use bevy_behave::prelude::BehavePlugin;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
+use bevy_renderdoc_capture::RenderDocPlugin;
 use bevy_screen_diagnostics::{
     ScreenDiagnosticsPlugin, ScreenEntityDiagnosticsPlugin, ScreenFrameDiagnosticsPlugin,
 };
 use bevy_tweening::TweeningPlugin;
+use minigame::ai::Satiety;
 use minigame::core::camera::CameraControlPlugin;
 use minigame::core::interaction::MapInteractionPlugin;
 use minigame::core::state::GameState;
@@ -20,7 +22,9 @@ use minigame::scenes::scene_selector::SceneSelectorPlugin;
 use minigame::sprite::sprite_mgr::SpriteManagerPlugin;
 use minigame::ui::cards::EntityCardsPlugin;
 use minigame::ui::hud::HudPlugin;
-use minigame::ui::{ErrorTipsPlugin, show_error_tips};
+use minigame::ui::{
+    ErrorTipsPlugin, ForegroundColor, PBarColorScheme, ProgressBarPlugin, show_error_tips,
+};
 
 fn close_window_on_esc(
     mut window_events: EventWriter<bevy::window::WindowCloseRequested>,
@@ -49,11 +53,13 @@ fn test_function_on_space(mut commands: Commands) {
 /// 创建应用并配置系统
 pub fn create_app() -> App {
     let mut app = App::new();
-    app.add_plugins(DefaultPlugins)
+    app // 开启 Shader 编译日志（关键！）
+        .add_plugins(DefaultPlugins)
         .insert_resource(WinitSettings {
             focused_mode: UpdateMode::Continuous,   // 窗口聚焦时持续运行
             unfocused_mode: UpdateMode::Continuous, // 窗口失焦时也持续运行
         })
+        .add_plugins(RenderDocPlugin::default())
         .add_plugins(TweeningPlugin)
         .add_plugins(Material2dPlugin::<HexagonBorderMaterial>::default())
         .add_plugins(ErrorTipsPlugin)
@@ -66,6 +72,10 @@ pub fn create_app() -> App {
         // .add_plugins(VisibilityPlugin)  //提示已经加载这个插件了，目前还不知道是哪个插件包含了这个
         .insert_resource(LevelLoader::default())
         .add_plugins((SpriteManagerPlugin, SceneSelectorPlugin))
+        .add_plugins(ProgressBarPlugin::<Satiety>::default())
+        .insert_resource(PBarColorScheme::<Satiety>::new().foreground_color(
+            ForegroundColor::Static(Color::srgba(0.224, 1., 0.91, 0.767)),
+        ))
         .init_state::<GameState>()
         .add_plugins((
             CameraControlPlugin,
@@ -73,14 +83,10 @@ pub fn create_app() -> App {
             MapInteractionPlugin,
             EntityCardsPlugin,
         ))
-        // .insert_resource(HexGridConfig::new(50.0, 50, 50, 5.0))
-        // .add_systems(Startup, setup_sprite_res)
         .add_systems(
             Update,
             (
                 minigame::core::systems::debug::debug_position_system,
-                // minigame::core::systems::movement::movement_system,
-                // minigame::core::systems::state_machine::state_machine_system,
                 close_window_on_esc.run_if(input_just_pressed(KeyCode::Escape)),
                 test_function_on_space.run_if(input_just_pressed(KeyCode::Space)),
             ),

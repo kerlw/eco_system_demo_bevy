@@ -2,7 +2,6 @@ use bevy::{prelude::*, ui::ContentSize};
 use bevy_tweening::{Animator, Delay, Tween, TweenCompleted, lens::*};
 use std::time::Duration;
 
-pub struct UIPlugin;
 pub struct ErrorTipsPlugin;
 
 const ERROR_TIPS_EVENT_ID: u64 = 0;
@@ -21,9 +20,6 @@ struct ErrorTipsUI;
 
 #[derive(Event)]
 pub struct EventShowErrorTips(pub String);
-
-#[derive(Event)]
-pub struct EventShowErrorTipsCompleted(pub Entity);
 
 impl Plugin for ErrorTipsPlugin {
     fn build(&self, app: &mut App) {

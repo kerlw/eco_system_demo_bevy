@@ -9,12 +9,12 @@ use thiserror::Error;
 /// 关卡配置
 #[derive(Asset, TypePath, Debug, Serialize, Deserialize)]
 pub struct LevelConfigAsset {
-    pub name: String,
-    pub size: UVec2,
+    pub name: String,                      // 关卡名称，貌似没什么用
+    pub size: UVec2,                       // 关卡地图大小
     pub startup_camera_pos: Option<IVec2>, // 初始相机位置，可选项
     #[serde(default = "default_init_gold")]
-    pub init_gold: u32,
-    pub entities: Vec<EntityConfig>,
+    pub init_gold: u32, // 地图初始化金币，默认为10
+    pub entities: Vec<EntityConfig>,       // 地图上初始实体列表
 }
 
 fn default_init_gold() -> u32 {
@@ -95,6 +95,7 @@ mod tests {
             name: String::from("test"),
             size: UVec2::new(1, 1),
             startup_camera_pos: Some(IVec2 { x: 2, y: 2 }),
+            init_gold: 10,
             entities: vec![entity.clone()],
         };
         println!("序列化字符串: {}", ron::ser::to_string(&cfg).unwrap());

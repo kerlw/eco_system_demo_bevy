@@ -6,6 +6,7 @@ pub struct SpriteManager {
     pub texture: Handle<Image>,
     pub texture_atlas_layouts: Handle<TextureAtlasLayout>,
     pub config: AtlasConfig,
+    pub stomach_icon: Handle<Image>,
 }
 
 pub struct SpriteManagerPlugin;
@@ -48,6 +49,7 @@ pub fn setup_sprite_res(
         texture: texture,
         texture_atlas_layouts: texture_atlas_layouts.add(layout),
         config,
+        stomach_icon: asset_server.load("textures/stomach_icon.png"),
     });
 }
 

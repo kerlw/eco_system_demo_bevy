@@ -1,7 +1,7 @@
-use std::time::Duration;
+use std::{collections::HashMap, time::Duration};
 
 use crate::{
-    ai::{AnimalActorBoard, EdibleEntity, FrameCounter, get_ai_behave_tree},
+    ai::{AnimalActorBoard, EdibleEntity, FrameCounter, Satiety, get_ai_behave_tree},
     core::{
         components::EntityType,
         hex_grid::{HexMapPosition, SpatialPartition},
@@ -12,9 +12,14 @@ use crate::{
     },
     scenes::GameSceneRoot,
     sprite::sprite_mgr::SpriteManager,
+    ui::{
+        BarBorder, BarHeight, BarOrientation, BarSettings, ForegroundColor, PBarColorScheme,
+        Percentage, ProgressBarMaterial,
+    },
 };
 use bevy::prelude::*;
 use bevy_behave::prelude::BehaveTree;
+use bevy_egui::egui::emath::OrderedFloat;
 
 #[derive(Component)]
 #[require(Visibility::default())]
@@ -41,51 +46,18 @@ pub struct Reproduction {
     pub cooldown: f32,
 }
 
-// /// 草组件
-// #[derive(Component)]
-// #[require(Visibility)]
-// pub struct Grass {
-//     pub growth_rate: f32,
-//     pub spread_range: i32,
-// }
-
-// /// 动物基础组件
-// #[derive(Component)]
-// pub struct Animal {
-//     pub hunger: f32,
-//     pub hunger_rate: f32,
-//     pub vision_range: i32,
-//     pub speed: f32,
-// }
-
-// /// 兔子特有组件
-// #[derive(Component)]
-// #[require(Visibility)]
-// pub struct Rabbit;
-
-// /// 狐狸特有组件
-// #[derive(Component)]
-// #[require(Visibility)]
-// pub struct Fox;
-
-/// 实体生成配置
-// pub struct EntityConfig {
-//     pub entity_type: EntityType,
-//     pub position: (i32, i32),
-//     pub health: f32,
-//     pub reproduction_rate: f32,
-//     // 类型特定属性
-//     pub growth_rate: Option<f32>,  // 草
-//     pub hunger_rate: Option<f32>,  // 动物
-//     pub vision_range: Option<i32>, // 动物
-//     pub speed: Option<f32>,        // 动物
-// }
+#[derive(Bundle)]
+pub struct EntityHeaderBarUI {
+    pub sprite: Sprite,
+    pub transform: Transform,
+}
 
 /// 实体生成器
 pub fn spawn_entity(
     commands: &mut Commands,
     config: &EntityConfig,
     sprite_manager: &ResMut<SpriteManager>,
+    _bar_mesh: &Res<SharedBarMesh>,
     partition: &mut ResMut<SpatialPartition>,
     parent: &Entity,
 ) {
@@ -103,23 +75,6 @@ pub fn spawn_entity(
         EdibleEntity::default(),
     ));
 
-    // 以下代码给精灵添加头顶ui，但更新ui可能存在性能问题，后面再研究
-    // children![(
-    //         Sprite::from_color(Color::srgb(0.25, 0.25, 0.55), Vec2::new(100.0, 30.0)),
-    //         Transform::from_translation(Vec3::Y * 50.0 + Vec3::Z * 3.0),
-    //         children![(
-    //             Text2d::new("animal_ui"),
-    //             TextLayout::new(JustifyText::Left, LineBreak::AnyCharacter),
-    //             // Wrap text in the rectangle
-    //             TextBounds::from(Vec2::new(100.0, 30.0)),
-    //             TextFont {
-    //                 font_size: 16.0,
-    //                 ..Default::default()
-    //             },
-    //             TextColor(WHITE.into()),
-    //         )],
-    //     )],
-
     match config.entity_type {
         EntityType::Rabbit => {
             // info!("spawn rabbit behave tree");
@@ -136,9 +91,51 @@ pub fn spawn_entity(
                 },
                 children![(
                     Name::new("rabbit behave_tree"),
-                    BehaveTree::new(get_ai_behave_tree(EntityType::Rabbit)).with_logging(true),
+                    BehaveTree::new(get_ai_behave_tree(EntityType::Rabbit)).with_logging(false),
                 )],
-            ));
+            ))
+            .with_children(|parent| {
+                // parent.spawn((
+                //     AnimalStateUIPanel::new(parent.target_entity()),
+                //     EntityHeaderBarUI {
+                //         sprite: Sprite::from_color(
+                //             Color::srgba(0.25, 0.25, 0.55, 0.6),
+                //             Vec2::new(100.0, 50.0),
+                //         ),
+                //         // 这里向上偏移量应当是hell_size + ui_height / 2
+                //         transform: Transform::from_translation(
+                //             Vec3::Y * partition.config.size + Vec3::Z * 3.0,
+                //         ),
+                //     },
+                //     // ProgressBar
+                // ));
+
+                // stomach icon
+                parent.spawn((
+                    Sprite {
+                        image: sprite_manager.stomach_icon.clone(),
+                        custom_size: Some(Vec2::splat(20.)),
+                        ..Default::default()
+                    },
+                    Transform::from_translation(Vec3::new(
+                        -partition.config.size / 2.,
+                        -partition.config.size / 2.,
+                        3.0,
+                    )),
+                ));
+
+                parent.spawn((
+                    Satiety(5500),
+                    BarSettings::<Satiety> {
+                        width: partition.config.size * 0.7,
+                        offset: -partition.config.size / 2.,
+                        height: BarHeight::Static(10.),
+                        orientation: BarOrientation::Vertical,
+                        border: BarBorder::new(2.0),
+                        ..Default::default()
+                    },
+                ));
+            });
         }
         EntityType::Fox => {
             // cmd.insert(Fox);
@@ -149,62 +146,91 @@ pub fn spawn_entity(
     cmd.insert(ChildOf(*parent));
 
     partition.insert_cache_entity(cmd.id(), &config.pos.into(), config.entity_type.clone());
+}
 
-    // // 添加基础组件
-    // entity.insert_bundle((
-    //     Position {
-    //         x: config.position.0,
-    //         y: config.position.1,
-    //     },
-    //     Health {
-    //         current: config.health,
-    //         max: config.health,
-    //     },
-    //     Reproduction {
-    //         rate: config.reproduction_rate,
-    //         cooldown: 0.0,
-    //     },
-    // ));
+pub fn spawn_satiety_pbar_onadd(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut mesh_handles: ResMut<MeshHandles>,
+    mut materials: ResMut<Assets<ProgressBarMaterial>>,
+    // mut materials2: ResMut<Assets<ColorMaterial>>,
+    color_scheme: Res<PBarColorScheme<Satiety>>,
+    query: Query<(Entity, &Satiety, &BarSettings<Satiety>), Added<Satiety>>,
+) {
+    for (entity, satiety, settings) in query.iter() {
+        let width = settings.normalized_width();
+        let height = settings.normalized_height();
 
-    // // 根据类型添加特定组件
-    // match config.entity_type {
-    //     EntityType::Grass => {
-    //         entity.insert_bundle((Grass {
-    //             growth_rate: config.growth_rate.unwrap_or(0.1),
-    //             spread_range: 2,
-    //         },));
-    //     }
-    //     EntityType::Rabbit => {
-    //         entity.insert_bundle((
-    //             Animal {
-    //                 hunger: 0.0,
-    //                 hunger_rate: config.hunger_rate.unwrap_or(0.1),
-    //                 vision_range: config.vision_range.unwrap_or(5),
-    //                 speed: config.speed.unwrap_or(1.0),
-    //             },
-    //             Rabbit,
-    //             VisionRange {
-    //                 radius: config.vision_range.unwrap_or(5),
-    //             },
-    //         ));
-    //     }
-    //     EntityType::Fox => {
-    //         entity.insert_bundle((
-    //             Animal {
-    //                 hunger: 0.0,
-    //                 hunger_rate: config.hunger_rate.unwrap_or(0.08),
-    //                 vision_range: config.vision_range.unwrap_or(7),
-    //                 speed: config.speed.unwrap_or(1.2),
-    //             },
-    //             Fox,
-    //             VisionRange {
-    //                 radius: config.vision_range.unwrap_or(7),
-    //             },
-    //         ));
-    //     }
-    // }
+        let mesh = mesh_handles.get(width, height).unwrap_or_else(|| {
+            mesh_handles.insert(
+                width,
+                height,
+                meshes.add(Mesh::from(Rectangle::new(width, height))),
+            )
+        });
 
-    // entity.id()
+        let (high, moderate, low) = match color_scheme.foreground_color {
+            ForegroundColor::Static(color) => (color, color, color),
+            ForegroundColor::TriSpectrum {
+                high,
+                moderate,
+                low,
+            } => (high, moderate, low),
+        };
+        info!(
+            "=====satiety width: {}, height: {}, settings: {:#?}",
+            width, height, settings
+        );
+
+        // satiety bar
+        commands.entity(entity).insert((
+            Mesh2d(mesh.0),
+            Transform::from_translation(Vec3::ZERO),
+            MeshMaterial2d(materials.add(ProgressBarMaterial {
+                value_and_dimensions:
+                    (satiety.value(), width, height, settings.border.width).into(),
+                background_color: color_scheme.background_color.to_linear(),
+                high_color: high.to_linear(),
+                moderate_color: moderate.to_linear(),
+                low_color: low.to_linear(),
+                offset: settings.normalized_offset().extend(0.),
+                border_color: Color::srgba(0.00, 0.00, 0.00, 0.35).to_linear(),
+                vertical: settings.orientation == BarOrientation::Vertical,
+            })),
+            GlobalZIndex(5),
+        ));
+    }
+}
+
+#[derive(Resource, Default)]
+pub struct MeshHandles(pub HashMap<(OrderedFloat<f32>, OrderedFloat<f32>), Handle<Mesh>>);
+
+impl MeshHandles {
+    pub fn get(&self, width: f32, height: f32) -> Option<Mesh2d> {
+        self.0
+            .get(&(OrderedFloat(width), OrderedFloat(height)))
+            .cloned()
+            .map(Mesh2d)
+    }
+
+    pub fn insert(&mut self, width: f32, height: f32, handle: Handle<Mesh>) -> Mesh2d {
+        self.0
+            .insert((OrderedFloat(width), OrderedFloat(height)), handle.clone());
+
+        Mesh2d(handle)
+    }
+}
+
+#[derive(Resource)]
+pub struct SharedBarMesh(pub Handle<Mesh>);
+pub fn pre_spawn_entities_system(
+    mut commands: Commands,
+    mut meshed: ResMut<Assets<Mesh>>,
+    partition: Res<SpatialPartition>,
+) {
+    commands.insert_resource(SharedBarMesh(
+        meshed.add(Rectangle::new(5., partition.config.size * 1.5)),
+    ));
 }
 
 pub fn spawn_entities_system(
@@ -213,6 +239,7 @@ pub fn spawn_entities_system(
     level_data: Res<Assets<LevelConfigAsset>>,
     sprite_manager: ResMut<SpriteManager>,
     mut partition: ResMut<SpatialPartition>,
+    bar_mesh: Res<SharedBarMesh>,
     root: Query<Entity, With<GameSceneRoot>>,
 ) {
     commands.insert_resource(FrameCounter::default());
@@ -226,6 +253,13 @@ pub fn spawn_entities_system(
         .id();
 
     for cfg in level_config.entities.iter() {
-        spawn_entity(&mut commands, cfg, &sprite_manager, &mut partition, &parent);
+        spawn_entity(
+            &mut commands,
+            cfg,
+            &sprite_manager,
+            &bar_mesh,
+            &mut partition,
+            &parent,
+        );
     }
 }

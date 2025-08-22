@@ -74,7 +74,7 @@ pub fn spawn_card_ui(
     sprite_manager: Res<SpriteManager>,
     // mut materials: ResMut<Assets<CustomMaterial>>,
 ) {
-    let level_config = level_data.get(&level_loader.level_data).unwrap();
+    let _level_config = level_data.get(&level_loader.level_data).unwrap();
     let parent = ui_root.single().unwrap();
 
     commands.entity(parent).with_children(|parent| {

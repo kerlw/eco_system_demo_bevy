@@ -5,6 +5,7 @@ edition = "2024"
 license = "MIT"
 
 [dependencies]
+macros = { path = "./macros" }
 bevy = "0.16.1"
 bevy_behave = "0.3.0"
 bevy_egui = "0.36.0"
@@ -17,3 +18,4 @@ thiserror = "2.0.12"
 pathfinding = "4.14.0"
 bevy-inspector-egui = "0.32.0"
 bevy_tweening = "0.13.0"
+bevy-renderdoc-capture = "0.2.0"

@@ -3,12 +3,15 @@ use bevy_behave::prelude::BehaveCtx;
 
 use crate::{
     ai::*,
-    core::{entities::spawn_entities_system, render_grid_system, setup_grid, GameState},
+    core::{
+        entities::{pre_spawn_entities_system, spawn_entities_system, spawn_satiety_pbar_onadd}, render_grid_system, setup_grid, GameState
+    },
     level::{
         config::{LevelConfigAsset, LevelConfigAssetLoader},
         loader::load_level_system,
     },
-    scenes::{game_loading::*, *}, ui::spawn_card_ui,
+    scenes::{game_loading::*, *},
+    ui::spawn_card_ui,
 };
 
 pub struct SceneSelectorPlugin;
@@ -63,8 +66,10 @@ impl Plugin for SceneSelectorPlugin {
                     setup_game_scene,
                     setup_grid,
                     render_grid_system,
+                    pre_spawn_entities_system,
                     spawn_entities_system,
                     spawn_card_ui,
+                    spawn_satiety_pbar_onadd,
                 )
                     .chain(),
             )
