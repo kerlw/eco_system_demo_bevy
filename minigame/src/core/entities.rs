@@ -202,6 +202,16 @@ pub fn spawn_satiety_pbar_onadd(
     }
 }
 
+// pub fn update_satiety_pbar(
+//     mut _commands: Commands,
+//     query: Query<(&Satiety, &ChildOf, &MeshMaterial2d<ProgressBarMaterial>)>,
+//     parent_q: Query<&AnimalActorBoard>,
+// ) {
+//     for (&mut satiety, child_of, material) in query.iter_mut() {
+//         let parent = parent_q.get(child_of.parent()).unwrap();
+//     }
+// }
+
 #[derive(Resource, Default)]
 pub struct MeshHandles(pub HashMap<(OrderedFloat<f32>, OrderedFloat<f32>), Handle<Mesh>>);
 
