@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 /// 关卡配置
-#[derive(Asset, TypePath, Debug, Serialize, Deserialize)]
+#[derive(Asset, TypePath, Debug, Serialize, Deserialize, Default)]
 pub struct LevelConfigAsset {
     pub name: String,                      // 关卡名称，貌似没什么用
     pub size: UVec2,                       // 关卡地图大小
@@ -117,6 +117,7 @@ mod tests {
             startup_camera_pos: Some(IVec2 { x: 2, y: 2 }),
             init_gold: 10,
             entities: vec![entity.clone()],
+            ..Default::default()
         };
         println!("序列化字符串: {}", ron::ser::to_string(&cfg).unwrap());
         assert_eq!(

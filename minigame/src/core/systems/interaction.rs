@@ -90,9 +90,9 @@ pub struct MapCellColors {
 impl Default for MapCellColors {
     fn default() -> Self {
         Self {
-            normal: Color::srgb(0.2, 0.2, 0.8),
-            hovered: Color::srgb(0.3, 0.3, 0.9),
-            selected: Color::srgb(0.8, 0.2, 0.2),
+            normal: Color::srgb(0.1, 0.55, 0.2),
+            hovered: Color::srgb(0.10, 0.80, 0.25),
+            selected: Color::srgb(0.80, 0.45, 0.20),
             click_effect: Color::srgb(1.0, 1.0, 1.0),
         }
     }

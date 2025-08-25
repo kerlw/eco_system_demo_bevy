@@ -50,7 +50,9 @@ pub fn render_grid_system(
                     Mesh2d(shared_mesh.0.clone()),
                     Transform::from_translation(center),
                     MeshMaterial2d(materials.add(HexagonBorderMaterial {
-                        color: Color::srgb(0.2, 0.2, 0.8).into(),
+                        // 地块的颜色或者纹理后面再处理吧，这里先暂时用绿色
+                        // color: Color::srgb(0.58, 0.38, 0.00).into(),
+                        color: Color::srgb(0.1, 0.55, 0.2).into(),
                         border_color: WHITE.into(),
                         border_width: 0.05,
                     })),
