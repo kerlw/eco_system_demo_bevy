@@ -74,8 +74,10 @@ pub fn spawn_card_ui(
     sprite_manager: Res<SpriteManager>,
     // mut materials: ResMut<Assets<CustomMaterial>>,
 ) {
-    let _level_config = level_data.get(&level_loader.level_data).unwrap();
+    let level_config = level_data.get(&level_loader.level_data).unwrap();
     let parent = ui_root.single().unwrap();
+
+    let cards = level_config.useable_cards.clone();
 
     commands.entity(parent).with_children(|parent| {
         parent
@@ -98,86 +100,90 @@ pub fn spawn_card_ui(
                 BackgroundColor(Color::srgba(0.45, 0.45, 0.45, 0.45).into()),
             ))
             .with_children(|root| {
-                root.spawn((
-                    Name::new("Card"),
-                    EntityCardInfo {
-                        entity_type: EntityType::Grass,
-                        cost: 10,
-                    },
-                    Interaction::default(),
-                    Node {
-                        width: Val::Px(68.0),
-                        height: Val::Px(100.0),
-                        flex_direction: FlexDirection::Column,
-                        overflow: Overflow::clip(),
-                        ..Default::default()
-                    },
-                    BorderRadius::all(Val::Px(5.5)),
-                    Outline {
-                        width: Val::Px(5.),
-                        offset: Val::ZERO,
-                        color: Color::NONE,
-                    },
-                    children![(
-                        ImageNode::new(card_assets.card_bg.clone()),
-                        Node {
-                            width: Val::Percent(100.),
-                            height: Val::Percent(100.),
-                            flex_direction: FlexDirection::Column,
-                            align_items: AlignItems::Center,
-                            justify_content: JustifyContent::Center,
-                            ..default()
+                for card in cards {
+                    let sprite_name = match card.entity_type {
+                        EntityType::Grass => "grass_normal",
+                        EntityType::Rabbit => "rabbit",
+                        EntityType::Fox => "fox",
+                        _ => panic!("unsupported entity type: {:?}", card.entity_type),
+                    };
+
+                    root.spawn((
+                        Name::new("Card"),
+                        EntityCardInfo {
+                            entity_type: EntityType::Grass,
+                            cost: card.cost,
                         },
-                        // MaterialNode(StandardMaterial {
-                        //     base_color_texture: Some(card_assets.card_bg.clone()),
-                        //     emissive: None,
-                        //     ..Default::default()
-                        // }),
-                        children![
-                            (
-                                sprite_manager.create_image_node_by_name("grass_normal"),
-                                Node {
-                                    width: Val::Px(68.),
-                                    height: Val::Px(68.),
-                                    ..Default::default()
-                                }
-                            ),
-                            (
-                                Node {
-                                    width: Val::Percent(100.),
-                                    height: Val::Px(40.),
-                                    align_content: AlignContent::Center,
-                                    align_items: AlignItems::Center,
-                                    justify_content: JustifyContent::Center,
-                                    flex_direction: FlexDirection::Row,
-                                    row_gap: Val::Px(2.0),
-                                    ..Default::default()
-                                },
-                                BackgroundColor(Color::srgba(0.184, 0.145, 0.741, 0.781)),
-                                BorderRadius::bottom(Val::Px(5.0)),
-                                children![
-                                    (
-                                        Text::new(format!("{}", 10)),
-                                        TextFont {
-                                            font: card_assets.font.clone(),
-                                            font_size: 20.0,
-                                            ..Default::default()
-                                        },
-                                        TextColor(Color::srgb(1.00, 0.76, 0.76).into()),
-                                    ),
-                                    (
-                                        ImageNode::new(card_assets.gold_icon.clone()),
-                                        Node {
-                                            width: Val::Px(20.0),
-                                            height: Val::Px(20.0),
-                                            ..Default::default()
-                                        }
-                                    ),
-                                ]
-                            )
-                        ]
-                    )],
-                ));
+                        Interaction::default(),
+                        Node {
+                            width: Val::Px(68.0),
+                            height: Val::Px(100.0),
+                            flex_direction: FlexDirection::Column,
+                            overflow: Overflow::clip(),
+                            ..Default::default()
+                        },
+                        BorderRadius::all(Val::Px(5.5)),
+                        Outline {
+                            width: Val::Px(5.),
+                            offset: Val::ZERO,
+                            color: Color::NONE,
+                        },
+                        children![(
+                            ImageNode::new(card_assets.card_bg.clone()),
+                            Node {
+                                width: Val::Percent(100.),
+                                height: Val::Percent(100.),
+                                flex_direction: FlexDirection::Column,
+                                align_items: AlignItems::Center,
+                                justify_content: JustifyContent::Center,
+                                ..default()
+                            },
+                            children![
+                                (
+                                    sprite_manager.create_image_node_by_name(sprite_name),
+                                    Node {
+                                        width: Val::Px(68.),
+                                        height: Val::Px(68.),
+                                        ..Default::default()
+                                    }
+                                ),
+                                (
+                                    Node {
+                                        width: Val::Percent(100.),
+                                        height: Val::Px(40.),
+                                        align_content: AlignContent::Center,
+                                        align_items: AlignItems::Center,
+                                        justify_content: JustifyContent::Center,
+                                        flex_direction: FlexDirection::Row,
+                                        row_gap: Val::Px(2.0),
+                                        ..Default::default()
+                                    },
+                                    BackgroundColor(Color::srgba(0.184, 0.145, 0.741, 0.781)),
+                                    BorderRadius::bottom(Val::Px(5.0)),
+                                    children![
+                                        (
+                                            Text::new(format!("{}", card.cost)),
+                                            TextFont {
+                                                font: card_assets.font.clone(),
+                                                font_size: 20.0,
+                                                ..Default::default()
+                                            },
+                                            TextColor(Color::srgb(1.00, 0.76, 0.76).into()),
+                                        ),
+                                        (
+                                            ImageNode::new(card_assets.gold_icon.clone()),
+                                            Node {
+                                                width: Val::Px(20.0),
+                                                height: Val::Px(20.0),
+                                                ..Default::default()
+                                            }
+                                        ),
+                                    ]
+                                )
+                            ],
+                        )],
+                    ));
+                }
             });
     });
 }

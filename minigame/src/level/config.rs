@@ -15,6 +15,26 @@ pub struct LevelConfigAsset {
     #[serde(default = "default_init_gold")]
     pub init_gold: u32, // 地图初始化金币，默认为10
     pub entities: Vec<EntityConfig>,       // 地图上初始实体列表
+    pub useable_cards: Vec<CardConfig>,    // 本关卡可用卡片
+}
+
+// #[derive(Asset, TypePath, Debug, Serialize, Deserialize)]
+// pub struct LevelConfig {
+//     pub name: String,                      // 关卡名称，貌似没什么用
+//     pub size: UVec2,                       // 关卡地图大小
+//     pub startup_camera_pos: Option<IVec2>, // 初始相机位置，可选项
+//     #[serde(default = "default_init_gold")]
+//     pub init_gold: u32, // 地图初始化金币，默认为10
+//     pub entities: Vec<EntityConfig>,       // 地图上初始实体列表
+//     pub useable_cards: Vec<CardConfig>,    // 本关卡可用卡片
+// }
+
+#[derive(Asset, TypePath, Debug, Serialize, Deserialize, Clone)]
+pub struct CardConfig {
+    #[serde(rename = "type")]
+    pub entity_type: EntityType, // 卡片对应的实体类型
+    pub cost: u32,        // 放置卡片对应的实体需要的金币数量
+    pub count_limit: u32, // 本关卡此卡片可用数量，0表示无限制
 }
 
 fn default_init_gold() -> u32 {

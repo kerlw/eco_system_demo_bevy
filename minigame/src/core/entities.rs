@@ -95,21 +95,6 @@ pub fn spawn_entity(
                 )],
             ))
             .with_children(|parent| {
-                // parent.spawn((
-                //     AnimalStateUIPanel::new(parent.target_entity()),
-                //     EntityHeaderBarUI {
-                //         sprite: Sprite::from_color(
-                //             Color::srgba(0.25, 0.25, 0.55, 0.6),
-                //             Vec2::new(100.0, 50.0),
-                //         ),
-                //         // 这里向上偏移量应当是hell_size + ui_height / 2
-                //         transform: Transform::from_translation(
-                //             Vec3::Y * partition.config.size + Vec3::Z * 3.0,
-                //         ),
-                //     },
-                //     // ProgressBar
-                // ));
-
                 // stomach icon
                 parent.spawn((
                     Sprite {
@@ -153,7 +138,6 @@ pub fn spawn_satiety_pbar_onadd(
     mut meshes: ResMut<Assets<Mesh>>,
     mut mesh_handles: ResMut<MeshHandles>,
     mut materials: ResMut<Assets<ProgressBarMaterial>>,
-    // mut materials2: ResMut<Assets<ColorMaterial>>,
     color_scheme: Res<PBarColorScheme<Satiety>>,
     query: Query<(Entity, &Satiety, &BarSettings<Satiety>), Added<Satiety>>,
 ) {
@@ -177,10 +161,6 @@ pub fn spawn_satiety_pbar_onadd(
                 low,
             } => (high, moderate, low),
         };
-        info!(
-            "=====satiety width: {}, height: {}, settings: {:#?}",
-            width, height, settings
-        );
 
         // satiety bar
         commands.entity(entity).insert((
@@ -201,16 +181,6 @@ pub fn spawn_satiety_pbar_onadd(
         ));
     }
 }
-
-// pub fn update_satiety_pbar(
-//     mut _commands: Commands,
-//     query: Query<(&Satiety, &ChildOf, &MeshMaterial2d<ProgressBarMaterial>)>,
-//     parent_q: Query<&AnimalActorBoard>,
-// ) {
-//     for (&mut satiety, child_of, material) in query.iter_mut() {
-//         let parent = parent_q.get(child_of.parent()).unwrap();
-//     }
-// }
 
 #[derive(Resource, Default)]
 pub struct MeshHandles(pub HashMap<(OrderedFloat<f32>, OrderedFloat<f32>), Handle<Mesh>>);
