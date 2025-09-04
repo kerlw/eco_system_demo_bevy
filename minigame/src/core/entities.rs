@@ -113,10 +113,11 @@ pub fn spawn_entity(
                     Satiety(5500),
                     BarSettings::<Satiety> {
                         width: partition.config.size * 0.7,
-                        offset: -partition.config.size / 2.,
+                        offset: Vec2::new(-partition.config.size / 2., partition.config.size / 10.),
                         height: BarHeight::Static(10.),
                         orientation: BarOrientation::Vertical,
                         border: BarBorder::new(2.0),
+                        threshold: Vec2::new(0.3, 0.8),
                         ..Default::default()
                     },
                 ));
@@ -166,17 +167,22 @@ pub fn spawn_satiety_pbar_onadd(
         commands.entity(entity).insert((
             Mesh2d(mesh.0),
             Transform::from_translation(Vec3::ZERO),
-            MeshMaterial2d(materials.add(ProgressBarMaterial {
-                value_and_dimensions:
-                    (satiety.value(), width, height, settings.border.width).into(),
-                background_color: color_scheme.background_color.to_linear(),
-                high_color: high.to_linear(),
-                moderate_color: moderate.to_linear(),
-                low_color: low.to_linear(),
-                offset: settings.normalized_offset().extend(0.),
-                border_color: Color::srgba(0.00, 0.00, 0.00, 0.35).to_linear(),
-                vertical: settings.orientation == BarOrientation::Vertical,
-            })),
+            MeshMaterial2d(
+                materials.add(ProgressBarMaterial {
+                    value_and_dimensions: (satiety.value(), width, height, settings.border.width)
+                        .into(),
+                    background_color: color_scheme.background_color.to_linear(),
+                    high_color: high.to_linear(),
+                    moderate_color: moderate.to_linear(),
+                    low_color: low.to_linear(),
+                    offset: settings
+                        .offset
+                        .extend(settings.threshold.x)
+                        .extend(settings.threshold.y),
+                    border_color: Color::srgba(0.00, 0.00, 0.00, 0.35).to_linear(),
+                    vertical: settings.orientation == BarOrientation::Vertical,
+                }),
+            ),
             GlobalZIndex(5),
         ));
     }

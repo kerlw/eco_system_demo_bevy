@@ -26,7 +26,7 @@ pub struct ProgressBarMaterial {
     #[uniform(4)]
     pub low_color: LinearRgba,
     #[uniform(5)]
-    pub offset: Vec4,
+    pub offset: Vec4, // x, y offset, z, w threshold (low (z) mid (w) high)
     #[uniform(6)]
     pub border_color: LinearRgba,
     pub vertical: bool,

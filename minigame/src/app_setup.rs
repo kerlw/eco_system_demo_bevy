@@ -74,7 +74,11 @@ pub fn create_app() -> App {
         .add_plugins((SpriteManagerPlugin, SceneSelectorPlugin))
         .add_plugins(ProgressBarPlugin::<Satiety>::default())
         .insert_resource(PBarColorScheme::<Satiety>::new().foreground_color(
-            ForegroundColor::Static(Color::srgba(0.224, 1., 0.91, 0.767)),
+            ForegroundColor::TriSpectrum {
+                high: Color::srgba(0.22, 0.55, 1.00, 0.77),
+                moderate: Color::srgba(0.91, 0.91, 0.224, 0.767),
+                low: Color::srgba(0.91, 0.224, 0.224, 0.767),
+            },
         ))
         .init_state::<GameState>()
         .add_plugins((

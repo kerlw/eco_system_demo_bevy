@@ -20,12 +20,15 @@ pub struct BarSettings<T: Percentage + Component + TypePath> {
     pub width: f32,
     /// Configures the offset of the bar relative to the entity its attached to.
     /// For horizontal bars, this is an offset along the y-axis, for vertical bars along the x-axis.
-    pub offset: f32,
+    pub offset: Vec2,
     pub height: BarHeight,
     pub border: BarBorder,
     pub orientation: BarOrientation,
     #[reflect(ignore)]
     pub phantom_data: PhantomData<T>,
+    /// Configures the threshold for the value stage.
+    /// low_color (threshold.x) moderate_color (threshold.y) high_color
+    pub threshold: Vec2,
 }
 
 impl<T: Percentage + Component + TypePath> BarSettings<T> {
@@ -50,26 +53,27 @@ impl<T: Percentage + Component + TypePath> BarSettings<T> {
         }
     }
 
-    fn offset_axis(&self) -> Vec3 {
-        match self.orientation {
-            BarOrientation::Horizontal => Vec3::Y,
-            BarOrientation::Vertical => Vec3::X,
-        }
-    }
+    // fn offset_axis(&self) -> Vec2 {
+    //     match self.orientation {
+    //         BarOrientation::Horizontal => Vec2::Y,
+    //         BarOrientation::Vertical => Vec2::X,
+    //     }
+    // }
 
-    pub fn normalized_offset(&self) -> Vec3 {
-        self.offset * self.offset_axis()
-    }
+    // pub fn normalized_offset(&self) -> Vec2 {
+    //     self.offset * self.offset_axis()
+    // }
 }
 
 impl<T: Percentage + Component + TypePath> Default for BarSettings<T> {
     fn default() -> Self {
         Self {
             width: DEFAULT_WIDTH,
-            offset: 0.0,
+            offset: Vec2::ZERO,
             height: default(),
             border: default(),
             orientation: default(),
+            threshold: Vec2::ZERO,
             phantom_data: default(),
         }
     }
