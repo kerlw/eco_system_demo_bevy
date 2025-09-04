@@ -31,7 +31,11 @@ pub fn udpate_board_state_system(
 
     if f_counter.counter % 10 == 0 {
         for (mut board, children) in query.iter_mut() {
+            // 修正饱食度数据
             board.satiety -= floor(f_counter.elpased * board.decay_faction * 100f32) as i32;
+            board.satiety = i32::clamp(board.satiety, 0, 10000);
+
+            // 修改动物们的饱食度进度条
             for child in children {
                 if let Ok((mut satiety, material)) = pbar_q.get_mut(*child) {
                     satiety.0 = board.satiety;
