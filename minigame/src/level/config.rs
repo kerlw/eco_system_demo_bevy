@@ -1,10 +1,21 @@
 use crate::core::components::EntityType;
 use bevy::{
     asset::{AssetLoader, LoadContext, io::Reader},
+    platform::collections::{HashMap, HashSet},
     prelude::*,
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+
+#[derive(Debug, Serialize, Deserialize, Default)]
+pub struct EntityFoodRelations {
+    // 邻接表表示捕食关系: 可以捕食哪些物种
+    pub preys_on: HashSet<EntityType>,
+    // 邻接表表示被捕食关系: 哪些物种可以捕食它
+    pub predators_of: HashSet<EntityType>,
+    // 可选：竞争关系或其他生态关系
+    pub competes_with: HashSet<EntityType>,
+}
 
 /// 关卡配置
 #[derive(Asset, TypePath, Debug, Serialize, Deserialize, Default)]
@@ -16,6 +27,8 @@ pub struct LevelConfigAsset {
     pub init_gold: u32, // 地图初始化金币，默认为10
     pub entities: Vec<EntityConfig>,       // 地图上初始实体列表
     pub useable_cards: Vec<CardConfig>,    // 本关卡可用卡片
+
+    pub food_chains: HashMap<EntityType, EntityFoodRelations>,
 }
 
 // #[derive(Asset, TypePath, Debug, Serialize, Deserialize)]
@@ -95,12 +108,15 @@ impl AssetLoader for LevelConfigAssetLoader {
 mod tests {
     use crate::{
         core::components::EntityType,
-        level::config::{EntityConfig, LevelConfigAsset},
+        level::config::{EntityConfig, EntityFoodRelations, LevelConfigAsset},
     };
-    use bevy::prelude::*;
+    use bevy::{
+        platform::collections::{HashMap, HashSet},
+        prelude::*,
+    };
 
     #[test]
-    fn ron_ser() {
+    fn ron_ser_test() {
         let entity = EntityConfig {
             entity_type: EntityType::Grass,
             pos: IVec2::new(1, 1),
@@ -111,14 +127,22 @@ mod tests {
             vision_range: None,
             speed: None,
         };
-        let cfg = LevelConfigAsset {
+
+        let mut cfg = LevelConfigAsset {
             name: String::from("test"),
             size: UVec2::new(1, 1),
             startup_camera_pos: Some(IVec2 { x: 2, y: 2 }),
             init_gold: 10,
             entities: vec![entity.clone()],
+            food_chains: HashMap::new(),
             ..Default::default()
         };
+
+        let mut relation = EntityFoodRelations::default();
+        relation.predators_of = vec![EntityType::Rabbit, EntityType::Fox]
+            .into_iter()
+            .collect();
+        cfg.food_chains.insert(EntityType::Grass, relation);
         println!("序列化字符串: {}", ron::ser::to_string(&cfg).unwrap());
         assert_eq!(
             "(type:(type:grass),pos:(1,1),health:None,reproduction_rate:None,growth_rate:None,hunger_rate:None,vision_range:None,speed:None)",
