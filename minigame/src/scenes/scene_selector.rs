@@ -4,7 +4,9 @@ use bevy_behave::prelude::BehaveCtx;
 use crate::{
     ai::*,
     core::{
-        entities::{pre_spawn_entities_system, spawn_entities_system, spawn_satiety_pbar_onadd}, render_grid_system, setup_grid, GameState
+        GameState,
+        entities::{spawn_entities_system, spawn_satiety_pbar_onadd},
+        render_grid_system, setup_grid,
     },
     level::{
         config::{LevelConfigAsset, LevelConfigAssetLoader},
@@ -66,7 +68,7 @@ impl Plugin for SceneSelectorPlugin {
                     setup_game_scene,
                     setup_grid,
                     render_grid_system,
-                    pre_spawn_entities_system,
+                    // pre_spawn_entities_system,
                     spawn_entities_system,
                     spawn_card_ui,
                     spawn_satiety_pbar_onadd,

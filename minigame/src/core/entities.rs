@@ -57,7 +57,6 @@ pub fn spawn_entity(
     commands: &mut Commands,
     config: &EntityConfig,
     sprite_manager: &ResMut<SpriteManager>,
-    _bar_mesh: &Res<SharedBarMesh>,
     partition: &mut ResMut<SpatialPartition>,
     parent: &Entity,
 ) {
@@ -207,17 +206,17 @@ impl MeshHandles {
     }
 }
 
-#[derive(Resource)]
-pub struct SharedBarMesh(pub Handle<Mesh>);
-pub fn pre_spawn_entities_system(
-    mut commands: Commands,
-    mut meshed: ResMut<Assets<Mesh>>,
-    partition: Res<SpatialPartition>,
-) {
-    commands.insert_resource(SharedBarMesh(
-        meshed.add(Rectangle::new(5., partition.config.size * 1.5)),
-    ));
-}
+// #[derive(Resource)]
+// pub struct SharedBarMesh(pub Handle<Mesh>);
+// pub fn pre_spawn_entities_system(
+//     mut commands: Commands,
+//     mut meshed: ResMut<Assets<Mesh>>,
+//     partition: Res<SpatialPartition>,
+// ) {
+//     commands.insert_resource(SharedBarMesh(
+//         meshed.add(Rectangle::new(5., partition.config.size * 1.5)),
+//     ));
+// }
 
 pub fn spawn_entities_system(
     mut commands: Commands,
@@ -225,7 +224,6 @@ pub fn spawn_entities_system(
     level_data: Res<Assets<LevelConfigAsset>>,
     sprite_manager: ResMut<SpriteManager>,
     mut partition: ResMut<SpatialPartition>,
-    bar_mesh: Res<SharedBarMesh>,
     root: Query<Entity, With<GameSceneRoot>>,
 ) {
     commands.insert_resource(FrameCounter::default());
@@ -239,13 +237,6 @@ pub fn spawn_entities_system(
         .id();
 
     for cfg in level_config.entities.iter() {
-        spawn_entity(
-            &mut commands,
-            cfg,
-            &sprite_manager,
-            &bar_mesh,
-            &mut partition,
-            &parent,
-        );
+        spawn_entity(&mut commands, cfg, &sprite_manager, &mut partition, &parent);
     }
 }

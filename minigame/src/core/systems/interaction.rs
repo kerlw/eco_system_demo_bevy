@@ -1,6 +1,6 @@
 use std::f32::consts::PI;
 
-use crate::core::entities::{OnMapEntitiesRoot, SharedBarMesh, spawn_entity};
+use crate::core::entities::{OnMapEntitiesRoot, spawn_entity};
 use crate::core::hex_grid::SpatialPartition;
 use crate::core::systems::hex_grid::{HexMapPosition, HexagonBorderMaterial};
 use crate::level::config::EntityConfig;
@@ -137,7 +137,6 @@ pub fn map_cell_click_system(
     mut materials: ResMut<Assets<HexagonBorderMaterial>>,
     colors: Res<MapCellColors>,
     mut level_gold: ResMut<LevelGold>,
-    bar_mesh: Res<SharedBarMesh>,
 ) {
     if !mouse.just_pressed(MouseButton::Left) || !mouse_position.is_in_primary_window {
         return;
@@ -196,7 +195,6 @@ pub fn map_cell_click_system(
                                 ..Default::default()
                             },
                             &sprite_mgr,
-                            &bar_mesh,
                             &mut partition,
                             &parent,
                         );
