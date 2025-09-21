@@ -33,7 +33,7 @@ impl Plugin for SceneSelectorPlugin {
         )
         .configure_sets(
             Update,
-            SceneSystemSet::LoadingSystem.run_if(in_state(GameState::GameLoading)),
+            SceneSystemSet::LoadingSystem.run_if(in_state(GameState::LevelLoading)),
         )
         .configure_sets(
             Update,
@@ -52,7 +52,7 @@ impl Plugin for SceneSelectorPlugin {
                 handle_level_button_interaction.in_set(SceneSystemSet::MenuSystems),
             )
             .add_systems(OnExit(GameState::MainMenu), despawn_level_selection_ui)
-            .add_systems(OnEnter(GameState::GameLoading), load_level_system)
+            .add_systems(OnEnter(GameState::LevelLoading), load_level_system)
             .add_systems(
                 Update,
                 (

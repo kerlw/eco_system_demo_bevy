@@ -17,6 +17,12 @@ pub struct EntityFoodRelations {
     pub competes_with: HashSet<EntityType>,
 }
 
+#[derive(Asset, TypePath, Debug, Serialize, Deserialize, Default)]
+pub struct GlobalConfiguration {
+    pub entity_configs: HashMap<EntityType, EntityConfig>, 
+    
+}
+
 /// 关卡配置
 #[derive(Asset, TypePath, Debug, Serialize, Deserialize, Default)]
 pub struct LevelConfigAsset {

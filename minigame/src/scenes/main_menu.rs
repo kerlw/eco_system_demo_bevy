@@ -38,7 +38,8 @@ pub fn setup_main_menu(mut commands: Commands, asset_server: Res<AssetServer>) {
                 justify_content: JustifyContent::Center,
                 ..Default::default()
             },
-            BackgroundColor(Color::srgb(0.08, 0.15, 0.40)),
+            ImageNode::new(asset_server.load("textures/main_menu_bg.png")),
+            // BackgroundColor(Color::srgb(0.08, 0.15, 0.40)),
         ))
         .with_children(|parent| {
             // 标题
@@ -63,7 +64,7 @@ pub fn setup_main_menu(mut commands: Commands, asset_server: Res<AssetServer>) {
                         justify_content: JustifyContent::Center,
                         ..Default::default()
                     },
-                    BackgroundColor(Color::srgba(0.0, 0.15, 0.15, 0.9)),
+                    // BackgroundColor(Color::srgba(0.0, 0.15, 0.15, 0.9)),
                 ))
                 .with_children(|parent| {
                     // 枚举assets/levels目录下的所有关卡文件
@@ -143,7 +144,7 @@ pub fn handle_level_button_interaction(
                 level_loader.current_level = Some(level_button.level_name.clone());
                 level_loader.loading = false;
                 // 切换到游戏场景
-                game_state.set(GameState::GameLoading);
+                game_state.set(GameState::LevelLoading);
             }
             Interaction::None => {
                 *color = NORMAL_BUTTON.into();
